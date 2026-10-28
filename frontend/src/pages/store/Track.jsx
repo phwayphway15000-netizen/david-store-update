@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api, errMsg } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
@@ -11,12 +11,16 @@ export default function Track() {
   const [token, setToken] = useState(sp.get("token") || "");
   const [res, setRes] = useState(null);
   const [error, setError] = useState("");
-  const go = async (e) => {
-    e?.preventDefault();
+  const lookup = useCallback(async (r, tk) => {
     setError("");
-    try { setRes((await api.get("/orders/track", { params: { ref, token } })).data); } catch (er) { setRes(null); setError(errMsg(er)); }
-  };
-  useEffect(() => { if (sp.get("ref") && sp.get("token")) go(); }, []); // eslint-disable-line
+    try { setRes((await api.get("/orders/track", { params: { ref: r, token: tk } })).data); } catch (er) { setRes(null); setError(errMsg(er)); }
+  }, []);
+  const go = (e) => { e.preventDefault(); lookup(ref, token); };
+  const qRef = sp.get("ref");
+  const qToken = sp.get("token");
+  useEffect(() => {
+    if (qRef && qToken) lookup(qRef, qToken);
+  }, [qRef, qToken, lookup]);
   return (
     <div className="container-x py-12 max-w-xl">
       <h1 className="text-4xl font-extrabold tracking-tight">{t("track")}</h1>

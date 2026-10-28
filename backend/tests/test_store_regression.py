@@ -7,7 +7,7 @@ import uuid
 import hashlib
 import pytest
 import requests
-from conftest import BASE_URL, BE, login, SUPPLIER_BASE, SUPPLIER_KEY
+from conftest import BASE_URL, BE, login, SUPPLIER_BASE, SUPPLIER_KEY, OWNER_EMAIL, OWNER_PASSWORD
 
 API = f"{BASE_URL}/api"
 WH = f"{API}/telegram/webhook"
@@ -19,14 +19,14 @@ FAKE_CHAT = 990000000 + int(time.time()) % 100000
 class TestAuth:
     def test_login_cookies_and_me(self):
         s = requests.Session()
-        r = s.post(f"{API}/auth/login", json={"email": "chutpakoda05@gmail.com", "password": "-FkF3oEvLf-j"})
+        r = s.post(f"{API}/auth/login", json={"email": OWNER_EMAIL, "password": OWNER_PASSWORD})
         assert r.status_code == 200, r.text
         d = r.json()
         assert d["role"] == "owner" and "password_hash" not in d
         sc = r.headers.get("set-cookie", "").lower()
         assert "access_token=" in sc and "httponly" in sc and "secure" in sc
         me = s.get(f"{API}/auth/me")
-        assert me.status_code == 200 and me.json()["email"] == "chutpakoda05@gmail.com"
+        assert me.status_code == 200 and me.json()["email"] == OWNER_EMAIL
 
     def test_wrong_password(self):
         r = requests.post(f"{API}/auth/login", json={"email": "TEST_wrong_%s@example.com" % uuid.uuid4().hex[:6], "password": "nope"})
@@ -48,7 +48,7 @@ class TestAuth:
         assert r.status_code == 429, "Lockout bypassable by spoofing X-Forwarded-For"
 
     def test_bcrypt_hash(self, mongo):
-        u = mongo.users.find_one({"email": "chutpakoda05@gmail.com"})
+        u = mongo.users.find_one({"email": OWNER_EMAIL})
         assert u["password_hash"].startswith("$2b$")
 
     def test_unauth_admin(self):

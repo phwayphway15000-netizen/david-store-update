@@ -187,55 +187,71 @@ async def on_callback(cq):
     chat_id = str(cq["message"]["chat"]["id"])
     await tg_api.tg_call("answerCallbackQuery", callback_query_id=cq["id"])
     kind, _, rest = data.partition(":")
-    if kind == "a":
-        if not is_owner(frm.get("id")):
-            await audit({"type": "telegram_user", "id": str(frm.get("id"))}, "telegram.unauthorized_admin_action", "order", None, {"data": data})
-            return await send(chat_id, "⛔ Unauthorized.")
-        action, _, ref = rest.partition(":")
-        return await owner_action(action, ref, chat_id, frm)
-    if kind == "b":
-        pid, _, vid = rest.partition(":")
-        p = await db.products.find_one({"id": {"$regex": f"^{pid}"}, "status": "published", "deleted_at": None}, {"_id": 0})
-        v = next((x for x in (p or {}).get("variants", []) if x["id"].startswith(vid)), None)
-        if not p or not v:
-            return await send(chat_id, "Product not available.")
-        _, intent = await create_intent(p["id"], v["id"], "bot")
-        await db.checkout_intents.update_one({"id": intent["id"]}, {"$set": {"status": "RESOLVED", "chat_id": chat_id}})
-        return await show_confirmation(chat_id, intent)
-    if kind == "x":
-        await db.checkout_intents.update_one({"id": rest, "chat_id": chat_id, "status": "RESOLVED"}, {"$set": {"status": "CANCELLED"}})
-        return await send(chat_id, "Order cancelled. /products to browse again.")
-    if kind == "c":
-        intent = await db.checkout_intents.find_one_and_update(
-            {"id": rest, "chat_id": chat_id, "status": "RESOLVED"}, {"$set": {"status": "CONVERTED"}},
-            projection={"_id": 0}, return_document=ReturnDocument.AFTER)
-        if not intent:
-            return await send(chat_id, "This order was already confirmed or cancelled. Use /orders.")
-        p, v = await O.load_product_variant(intent["product_id"], intent["variant_id"])
-        cid = await O.get_customer("telegram", chat_id, frm.get("first_name"), frm.get("username"))
-        actor = {"type": "telegram_customer", "id": chat_id, "name": frm.get("username") or frm.get("first_name")}
-        o = await O.create_order(p, v, "WEBSITE_TELEGRAM",
-                                 actor, "AWAITING_PAYMENT", cid, "telegram", chat_id,
-                                 customer_name=frm.get("first_name"), customer_contact=f"@{frm['username']}" if frm.get("username") else None,
-                                 extra={"checkout_intent_id": intent["id"]})
-        await db.checkout_intents.update_one({"id": intent["id"]}, {"$set": {"order_id": o["id"]}})
-        await notify_owner("🆕 New order\n" + order_summary(o, True), [[("👁 View", f"a:view:{o['ref']}")]])
-        return await show_payment_methods(chat_id, o)
-    if kind == "pm":
-        ref, _, mid = rest.partition(":")
-        o = await db.orders.find_one({"ref": ref, "channel_id": chat_id}, {"_id": 0})
-        m = await db.payment_methods.find_one({"code": mid, "enabled": True}, {"_id": 0})
-        if not o or not m:
-            return await send(chat_id, "Payment method unavailable.")
-        if o["status"] not in {"AWAITING_PAYMENT", "PAYMENT_REJECTED"}:
-            return await send(chat_id, f"Order {ref} is {o['status']}.")
-        await db.orders.update_one({"id": o["id"]}, {"$set": {"payment_method_id": m["id"]}})
-        await set_session(chat_id, "await_evidence", o["id"])
-        return await send(chat_id, f"💳 <b>{esc(m['name'])}</b>\nAccount name: <b>{esc(m['account_name'])}</b>\n"
-                                   f"Number: <code>{esc(m['account_number'])}</code>\nAmount: <b>{mmk(o['total_mmk'])}</b>\n"
-                                   f"Note/Remark: <code>{o['ref']}</code>\n\n{esc(m.get('instructions') or '')}\n\n"
-                                   "ငွေလွှဲပြီးပါက Transaction ID (သို့) Screenshot ကို ဤနေရာသို့ ပို့ပေးပါ။\n"
-                                   "After paying, send the transaction ID or a screenshot here. Your payment stays pending until our team verifies it.")
+    handler = CALLBACKS.get(kind)
+    if handler:
+        await handler(rest, chat_id, frm)
+
+
+async def cb_admin(rest, chat_id, frm):
+    if not is_owner(frm.get("id")):
+        await audit({"type": "telegram_user", "id": str(frm.get("id"))}, "telegram.unauthorized_admin_action", "order", None, {"data": rest})
+        return await send(chat_id, "⛔ Unauthorized.")
+    action, _, ref = rest.partition(":")
+    return await owner_action(action, ref, chat_id, frm)
+
+
+async def cb_buy(rest, chat_id, frm):
+    pid, _, vid = rest.partition(":")
+    p = await db.products.find_one({"id": {"$regex": f"^{pid}"}, "status": "published", "deleted_at": None}, {"_id": 0})
+    v = next((x for x in (p or {}).get("variants", []) if x["id"].startswith(vid)), None)
+    if not p or not v:
+        return await send(chat_id, "Product not available.")
+    _, intent = await create_intent(p["id"], v["id"], "bot")
+    await db.checkout_intents.update_one({"id": intent["id"]}, {"$set": {"status": "RESOLVED", "chat_id": chat_id}})
+    return await show_confirmation(chat_id, intent)
+
+
+async def cb_cancel(rest, chat_id, frm):
+    await db.checkout_intents.update_one({"id": rest, "chat_id": chat_id, "status": "RESOLVED"}, {"$set": {"status": "CANCELLED"}})
+    return await send(chat_id, "Order cancelled. /products to browse again.")
+
+
+async def cb_confirm(rest, chat_id, frm):
+    intent = await db.checkout_intents.find_one_and_update(
+        {"id": rest, "chat_id": chat_id, "status": "RESOLVED"}, {"$set": {"status": "CONVERTED"}},
+        projection={"_id": 0}, return_document=ReturnDocument.AFTER)
+    if not intent:
+        return await send(chat_id, "This order was already confirmed or cancelled. Use /orders.")
+    p, v = await O.load_product_variant(intent["product_id"], intent["variant_id"])
+    cid = await O.get_customer("telegram", chat_id, frm.get("first_name"), frm.get("username"))
+    actor = {"type": "telegram_customer", "id": chat_id, "name": frm.get("username") or frm.get("first_name")}
+    contact = f"@{frm['username']}" if frm.get("username") else None
+    o = await O.create_order(p, v, "WEBSITE_TELEGRAM", actor, "AWAITING_PAYMENT", cid, "telegram", chat_id,
+                             customer_name=frm.get("first_name"), customer_contact=contact,
+                             extra={"checkout_intent_id": intent["id"]})
+    await db.checkout_intents.update_one({"id": intent["id"]}, {"$set": {"order_id": o["id"]}})
+    await notify_owner("🆕 New order\n" + order_summary(o, True), [[("👁 View", f"a:view:{o['ref']}")]])
+    return await show_payment_methods(chat_id, o)
+
+
+async def cb_pay_method(rest, chat_id, frm):
+    ref, _, mid = rest.partition(":")
+    o = await db.orders.find_one({"ref": ref, "channel_id": chat_id}, {"_id": 0})
+    m = await db.payment_methods.find_one({"code": mid, "enabled": True}, {"_id": 0})
+    if not o or not m:
+        return await send(chat_id, "Payment method unavailable.")
+    if o["status"] not in {"AWAITING_PAYMENT", "PAYMENT_REJECTED"}:
+        return await send(chat_id, f"Order {ref} is {o['status']}.")
+    await db.orders.update_one({"id": o["id"]}, {"$set": {"payment_method_id": m["id"]}})
+    await set_session(chat_id, "await_evidence", o["id"])
+    return await send(chat_id, f"💳 <b>{esc(m['name'])}</b>\nAccount name: <b>{esc(m['account_name'])}</b>\n"
+                               f"Number: <code>{esc(m['account_number'])}</code>\nAmount: <b>{mmk(o['total_mmk'])}</b>\n"
+                               f"Note/Remark: <code>{o['ref']}</code>\n\n{esc(m.get('instructions') or '')}\n\n"
+                               "ငွေလွှဲပြီးပါက Transaction ID (သို့) Screenshot ကို ဤနေရာသို့ ပို့ပေးပါ။\n"
+                               "After paying, send the transaction ID or a screenshot here. Your payment stays pending until our team verifies it.")
+
+
+CALLBACKS = {"a": cb_admin, "b": cb_buy, "x": cb_cancel, "c": cb_confirm, "pm": cb_pay_method}
 
 
 async def show_payment_methods(chat_id, o):

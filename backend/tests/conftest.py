@@ -7,10 +7,10 @@ from dotenv import dotenv_values
 FE = dotenv_values(Path("/app/frontend/.env"))
 BE = dotenv_values(Path("/app/backend/.env"))
 BASE_URL = (os.environ.get("REACT_APP_BACKEND_URL") or FE["REACT_APP_BACKEND_URL"]).rstrip("/")
-OWNER_EMAIL = "chutpakoda05@gmail.com"
-OWNER_PASSWORD = "-FkF3oEvLf-j"
-SUPPLIER_KEY = "1Jn85GbGirYCAQD_"
-SUPPLIER_BASE = "https://629dddf4-1c64-4682-bbaf-76102e173622.preview.emergentagent.com"
+OWNER_EMAIL = os.environ.get("TEST_OWNER_EMAIL") or BE["ADMIN_EMAIL"]
+OWNER_PASSWORD = os.environ.get("TEST_OWNER_PASSWORD") or BE["ADMIN_PASSWORD"]
+SUPPLIER_KEY = BE["DEMO_SUPPLIER_KEY"]
+SUPPLIER_BASE = BE["PUBLIC_BASE_URL"].rstrip("/")
 
 
 def login(email, password):

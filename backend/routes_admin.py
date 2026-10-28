@@ -1,8 +1,7 @@
 import io
 import csv
 import os
-import hashlib
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File, Form
 from pydantic import BaseModel, Field, EmailStr
@@ -10,17 +9,13 @@ from typing import Optional, List, Literal
 
 from core import (db, now, now_iso, new_id, slugify, hash_password, verify_password, create_token, current_user,
                   require, has_perm, actor_of, audit, put_object, get_object, decrypt, APP_NAME, IMAGE_TYPES,
-                  rate_limit, client_ip, ROLES, PERMS)
+                  client_ip, PERMS)
 from catalog import recompute, lookup_maps
 import orders as O
 import tg_api
 import telegram_bot as TB
 
 router = APIRouter(prefix="/api")
-
-
-def err(e):
-    raise HTTPException(400, str(e))
 
 
 # ---------------- auth ----------------
@@ -355,54 +350,66 @@ async def bulk(body: BulkIn, user=Depends(require("products"))):
     return {"updated": n}
 
 
+def parse_sheet(filename, raw):
+    name = (filename or "").lower()
+    if name.endswith(".csv"):
+        return list(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))))
+    if name.endswith(".xlsx"):
+        from openpyxl import load_workbook
+        it = load_workbook(io.BytesIO(raw), read_only=True).active.iter_rows(values_only=True)
+        hdr = [str(h or "").strip() for h in next(it)]
+        return [{hdr[i]: (c if c is not None else "") for i, c in enumerate(r) if i < len(hdr)} for r in it]
+    raise HTTPException(400, "Upload a .csv or .xlsx file")
+
+
+def group_rows(rows):
+    groups, errors = {}, []
+    for i, r in enumerate(rows[:2000], 2):
+        r = {str(k).strip().lower(): str(v).strip() for k, v in r.items()}
+        if not r.get("name"):
+            errors.append({"row": i, "error": "name is required"})
+            continue
+        try:
+            r["_price"] = int(float(r.get("price_mmk") or "x"))
+        except ValueError:
+            errors.append({"row": i, "error": "price_mmk must be a number"})
+            continue
+        groups.setdefault(r["name"].lower(), []).append(r)
+    return groups, errors
+
+
+async def find_or_create(coll, name, extra):
+    import re
+    if not name:
+        return None
+    doc = await db[coll].find_one({"name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}, "deleted_at": None})
+    if not doc:
+        doc = {"id": new_id(), "name": name, "slug": slugify(name).rsplit("-", 1)[0], "sort": 100,
+               "created_at": now_iso(), "deleted_at": None, **extra}
+        await db[coll].insert_one(dict(doc))
+    return doc["id"]
+
+
+def row_variant(x):
+    stock = x.get("stock_status") if x.get("stock_status") in ("in_stock", "out_of_stock", "limited") else "in_stock"
+    return VariantIn(name=x.get("plan") or "Standard", duration=x.get("duration", ""), price_mmk=x["_price"], stock_status=stock)
+
+
 @router.post("/admin/products/import")
 async def import_products(file: UploadFile = File(...), user=Depends(require("products"))):
     raw = await file.read()
     if len(raw) > 5 * 1024 * 1024:
         raise HTTPException(400, "File too large (max 5MB)")
-    name = (file.filename or "").lower()
-    rows = []
-    if name.endswith(".csv"):
-        rows = list(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))))
-    elif name.endswith(".xlsx"):
-        from openpyxl import load_workbook
-        ws = load_workbook(io.BytesIO(raw), read_only=True).active
-        it = ws.iter_rows(values_only=True)
-        hdr = [str(h or "").strip() for h in next(it)]
-        rows = [{hdr[i]: (c if c is not None else "") for i, c in enumerate(r) if i < len(hdr)} for r in it]
-    else:
-        raise HTTPException(400, "Upload a .csv or .xlsx file")
-    import re
-    created, errors, groups = 0, [], {}
-    for i, r in enumerate(rows[:2000], 2):
-        r = {str(k).strip().lower(): str(v).strip() for k, v in r.items()}
-        try:
-            if not r.get("name"):
-                raise ValueError("name is required")
-            r["_price"] = int(float(r.get("price_mmk") or "x"))
-            groups.setdefault(r["name"].lower(), []).append(r)
-        except Exception as e:
-            errors.append({"row": i, "error": str(e)[:200] if not isinstance(e, ValueError) or "name" in str(e) else "price_mmk must be a number"})
+    groups, errors = group_rows(parse_sheet(file.filename, raw))
+    created = 0
     for rs in groups.values():
         r = rs[0]
         try:
-            bid = cid = None
-            if r.get("brand"):
-                b = await db.brands.find_one({"name": {"$regex": f"^{re.escape(r['brand'])}$", "$options": "i"}, "deleted_at": None})
-                if not b:
-                    b = {"id": new_id(), "name": r["brand"], "slug": slugify(r["brand"]).rsplit("-", 1)[0], "color": "#2563EB", "sort": 100, "created_at": now_iso(), "deleted_at": None}
-                    await db.brands.insert_one(dict(b))
-                bid = b["id"]
-            if r.get("category"):
-                c = await db.categories.find_one({"name": {"$regex": f"^{re.escape(r['category'])}$", "$options": "i"}, "deleted_at": None})
-                if not c:
-                    c = {"id": new_id(), "name": r["category"], "name_my": "", "slug": slugify(r["category"]).rsplit("-", 1)[0], "icon": "sparkles", "sort": 100, "created_at": now_iso(), "deleted_at": None}
-                    await db.categories.insert_one(dict(c))
-                cid = c["id"]
+            bid = await find_or_create("brands", r.get("brand"), {"color": "#2563EB"})
+            cid = await find_or_create("categories", r.get("category"), {"name_my": "", "icon": "sparkles"})
             body = ProductIn(name=r["name"], brand_id=bid, category_id=cid, description=r.get("description", ""),
                              short_description=r.get("short_description", "")[:300], status="draft",
-                             variants=[VariantIn(name=x.get("plan") or "Standard", duration=x.get("duration", ""), price_mmk=x["_price"],
-                                                 stock_status=x.get("stock_status") if x.get("stock_status") in ("in_stock", "out_of_stock", "limited") else "in_stock") for x in rs])
+                             variants=[row_variant(x) for x in rs])
             await create_product(body, user)
             created += 1
         except Exception as e:
@@ -654,7 +661,7 @@ async def manual_order(body: ManualOrderIn, user=Depends(require("orders"))):
     try:
         p, v = await O.load_product_variant(body.product_id, body.variant_id)
     except O.OrderError as e:
-        err(e)
+        raise HTTPException(400, str(e)) from e
     o = await O.create_order(p, v, body.source, actor_of(user), "AWAITING_PAYMENT",
                              channel="messenger" if body.source == "DIRECT_MESSENGER" else "manual",
                              customer_name=body.customer_name, customer_contact=body.customer_contact, note=body.note,
@@ -688,7 +695,7 @@ async def do_transition(oid: str, body: TransitionIn, user=Depends(require("orde
         else:
             res, _ = await O.transition(o["id"], body.to, actor_of(user), note=body.note)
     except O.OrderError as e:
-        err(e)
+        raise HTTPException(400, str(e)) from e
     return decorate(res)
 
 
@@ -757,7 +764,7 @@ async def deliver(oid: str, body: DeliverIn, user=Depends(require("orders.delive
     try:
         res = await O.deliver(o["id"], body.artifact_type, body.content, actor_of(user))
     except O.OrderError as e:
-        err(e)
+        raise HTTPException(400, str(e)) from e
     return {"result": res["result"], "order": decorate(res["order"])}
 
 

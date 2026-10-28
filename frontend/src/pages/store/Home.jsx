@@ -99,7 +99,7 @@ export default function Home() {
   const why = [[ShieldCheck, "why1"], [Eye, "why2"], [MessagesSquare, "why3"], [Truck, "why4"]];
   const grid = (q) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-      {q.isLoading ? Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />) : q.data?.items.map((p, i) => <ProductCard key={p.id} p={p} i={i} />)}
+      {q.isLoading ? Array.from({ length: 4 }, (_, i) => `sk-${i}`).map((k) => <CardSkeleton key={k} />) : q.data?.items.map((p, i) => <ProductCard key={p.id} p={p} i={i} />)}
     </div>
   );
   return (
@@ -143,7 +143,7 @@ export default function Home() {
       <Section eyebrow={t("help_center")} title={t("faq")} id="faq">
         <Accordion type="single" collapsible className="max-w-3xl">
           {(s?.faq || []).map((f, i) => (
-            <AccordionItem key={i} value={`f${i}`}><AccordionTrigger data-testid={`faq-item-${i}`} className="text-left">{pick(f.q_en, f.q_my)}</AccordionTrigger><AccordionContent className="text-muted-foreground">{pick(f.a_en, f.a_my)}</AccordionContent></AccordionItem>
+            <AccordionItem key={f.q_en || f.q_my || i} value={`f${i}`}><AccordionTrigger data-testid={`faq-item-${i}`} className="text-left">{pick(f.q_en, f.q_my)}</AccordionTrigger><AccordionContent className="text-muted-foreground">{pick(f.a_en, f.a_my)}</AccordionContent></AccordionItem>
           ))}
         </Accordion>
       </Section>

@@ -1,5 +1,6 @@
 import asyncio
 import ipaddress
+from datetime import datetime
 import json
 import socket
 from urllib.parse import urlparse, urljoin
@@ -145,19 +146,66 @@ async def get_supplier(sid):
     return s
 
 
-async def run_sync(s, actor, trigger="manual"):
-    run = {"id": new_id(), "supplier_id": s["id"], "trigger": trigger, "status": "running", "started_at": now_iso(),
-           "new_count": 0, "updated_count": 0, "duplicate_count": 0, "price_changes": 0, "error": None, "attempts": 0}
-    await db.supplier_sync_runs.insert_one(dict(run))
-    items, err = None, None
+async def fetch_with_retry(s, run):
+    err = None
     for attempt in range(3):
         run["attempts"] = attempt + 1
         try:
             _, items = await fetch_items(s)
-            break
+            return items, None
         except Exception as e:
             err = str(e)
             await asyncio.sleep(2 ** attempt)
+    return None, err
+
+
+async def upsert_supplier_product(s, n, raw, run, alerts):
+    existing = await db.supplier_products.find_one({"supplier_id": s["id"], "external_id": n["external_id"]}, {"_id": 0})
+    await db.inventory_snapshots.insert_one({"supplier_id": s["id"], "external_id": n["external_id"], "stock": n["stock"],
+                                             "cost": n["cost"], "taken_at": now_iso()})
+    if not existing:
+        await db.supplier_products.insert_one({"id": new_id(), "supplier_id": s["id"], **n, "raw": raw if len(json.dumps(raw)) < 20000 else {},
+                                               "review_status": "new", "linked_product_id": None,
+                                               "first_seen_at": now_iso(), "last_seen_at": now_iso()})
+        run["new_count"] += 1
+        return
+    if existing.get("cost") is not None and n["cost"] is not None and existing["cost"] != n["cost"]:
+        run["price_changes"] += 1
+        alerts.append(f"{n['name']}: {existing['cost']} → {n['cost']}")
+        await db.price_history.insert_one({"id": new_id(), "kind": "supplier_cost", "supplier_id": s["id"],
+                                           "external_id": n["external_id"], "old": existing["cost"], "new": n["cost"], "created_at": now_iso()})
+    await db.supplier_products.update_one({"id": existing["id"]}, {"$set": {**n, "last_seen_at": now_iso()}})
+    run["updated_count"] += 1
+
+
+async def apply_to_variant(s, p, v, n):
+    """Only supplier-owned fields change; selling price only when unlocked and a markup is configured."""
+    v["supplier_cost"], v["supplier_stock"], v["last_synced_at"] = n["cost"], n["stock"], now_iso()
+    if v.get("price_locked", True) or s.get("markup_percent") is None or n["cost"] is None:
+        return
+    newp = int(round(n["cost"] * (1 + s["markup_percent"] / 100)))
+    if newp != v.get("price_mmk"):
+        await db.price_history.insert_one({"id": new_id(), "kind": "selling_price", "product_id": p["id"], "variant_id": v["id"],
+                                           "old": v.get("price_mmk"), "new": newp, "source": "supplier_markup", "created_at": now_iso()})
+        v["price_mmk"] = newp
+
+
+async def update_linked_variants(s, n):
+    async for p in db.products.find({"variants.supplier_id": s["id"], "variants.supplier_product_id": n["external_id"]}, {"_id": 0}):
+        for v in p["variants"]:
+            if v.get("supplier_id") == s["id"] and v.get("supplier_product_id") == n["external_id"]:
+                await apply_to_variant(s, p, v, n)
+        recompute(p)
+        await db.products.update_one({"id": p["id"]}, {"$set": {"variants": p["variants"], "min_price": p["min_price"],
+                                                                 "available": p["available"], "low_stock": p["low_stock"],
+                                                                 "on_promo": p["on_promo"], "last_synced_at": now_iso()}})
+
+
+async def run_sync(s, actor, trigger="manual"):
+    run = {"id": new_id(), "supplier_id": s["id"], "trigger": trigger, "status": "running", "started_at": now_iso(),
+           "new_count": 0, "updated_count": 0, "duplicate_count": 0, "price_changes": 0, "error": None, "attempts": 0}
+    await db.supplier_sync_runs.insert_one(dict(run))
+    items, err = await fetch_with_retry(s, run)
     if items is None:
         run.update(status="failed", error=err, finished_at=now_iso())
         await db.supplier_sync_runs.update_one({"id": run["id"]}, {"$set": run})
@@ -173,40 +221,8 @@ async def run_sync(s, actor, trigger="manual"):
             run["duplicate_count"] += 1
             continue
         seen.add(n["external_id"])
-        existing = await db.supplier_products.find_one({"supplier_id": s["id"], "external_id": n["external_id"]}, {"_id": 0})
-        snap = {"supplier_id": s["id"], "external_id": n["external_id"], "stock": n["stock"], "cost": n["cost"], "taken_at": now_iso()}
-        await db.inventory_snapshots.insert_one(snap)
-        if not existing:
-            await db.supplier_products.insert_one({"id": new_id(), "supplier_id": s["id"], **n, "raw": raw if len(json.dumps(raw)) < 20000 else {},
-                                                   "review_status": "new", "linked_product_id": None,
-                                                   "first_seen_at": now_iso(), "last_seen_at": now_iso()})
-            run["new_count"] += 1
-        else:
-            if existing.get("cost") is not None and n["cost"] is not None and existing["cost"] != n["cost"]:
-                run["price_changes"] += 1
-                alerts.append(f"{n['name']}: {existing['cost']} → {n['cost']}")
-                await db.price_history.insert_one({"id": new_id(), "kind": "supplier_cost", "supplier_id": s["id"],
-                                                   "external_id": n["external_id"], "old": existing["cost"], "new": n["cost"], "created_at": now_iso()})
-            await db.supplier_products.update_one({"id": existing["id"]}, {"$set": {**n, "last_seen_at": now_iso()}})
-            run["updated_count"] += 1
-        # update linked variants: only supplier-owned fields; selling price only if unlocked + markup configured
-        async for p in db.products.find({"variants.supplier_id": s["id"], "variants.supplier_product_id": n["external_id"]}, {"_id": 0}):
-            for v in p["variants"]:
-                if v.get("supplier_id") == s["id"] and v.get("supplier_product_id") == n["external_id"]:
-                    v["supplier_cost"] = n["cost"]
-                    v["supplier_stock"] = n["stock"]
-                    v["last_synced_at"] = now_iso()
-                    if not v.get("price_locked", True) and s.get("markup_percent") is not None and n["cost"] is not None:
-                        newp = int(round(n["cost"] * (1 + s["markup_percent"] / 100)))
-                        if newp != v.get("price_mmk"):
-                            await db.price_history.insert_one({"id": new_id(), "kind": "selling_price", "product_id": p["id"],
-                                                               "variant_id": v["id"], "old": v.get("price_mmk"), "new": newp,
-                                                               "source": "supplier_markup", "created_at": now_iso()})
-                            v["price_mmk"] = newp
-            recompute(p)
-            await db.products.update_one({"id": p["id"]}, {"$set": {"variants": p["variants"], "min_price": p["min_price"],
-                                                                     "available": p["available"], "low_stock": p["low_stock"],
-                                                                     "on_promo": p["on_promo"], "last_synced_at": now_iso()}})
+        await upsert_supplier_product(s, n, raw, run, alerts)
+        await update_linked_variants(s, n)
     run.update(status="success", finished_at=now_iso(), item_count=len(items))
     await db.supplier_sync_runs.update_one({"id": run["id"]}, {"$set": run})
     await db.suppliers.update_one({"id": s["id"]}, {"$set": {"health": "ok", "last_error": None, "last_sync_at": now_iso()}})
@@ -221,7 +237,7 @@ async def scheduler_loop():
         try:
             async for s in db.suppliers.find({"active": True, "deleted_at": None, "sync_interval_minutes": {"$gt": 0}}, {"_id": 0}):
                 last = s.get("last_sync_at")
-                due = not last or (now().timestamp() - __import__("datetime").datetime.fromisoformat(last).timestamp()) >= s["sync_interval_minutes"] * 60
+                due = not last or (now() - datetime.fromisoformat(last)).total_seconds() >= s["sync_interval_minutes"] * 60
                 if due:
                     await run_sync(s, {"type": "system", "id": "scheduler"}, "scheduled")
         except Exception as e:
@@ -325,11 +341,14 @@ async def read_openapi(sid: str, user=Depends(require("suppliers"))):
     s = await get_supplier(sid)
     if not s.get("openapi_url"):
         raise HTTPException(400, "No OpenAPI URL configured")
+    spec = {}
     try:
         status, body = await safe_get(s["openapi_url"], {"Accept": "application/json"})
         spec = json.loads(body)
     except Exception as e:
-        raise HTTPException(400, f"Could not read spec as JSON: {str(e)[:200]}")
+        raise HTTPException(400, f"Could not read spec as JSON: {str(e)[:200]}") from e
+    if not isinstance(spec, dict):
+        raise HTTPException(400, "Spec must be a JSON object")
     paths = [{"path": p, "summary": (ops.get("get") or {}).get("summary", "")}
              for p, ops in (spec.get("paths") or {}).items() if isinstance(ops, dict) and "get" in ops]
     return {"title": (spec.get("info") or {}).get("title"), "get_endpoints": paths[:100],
@@ -370,7 +389,7 @@ class ImportBody(BaseModel):
 
 @router.post("/{sid}/import")
 async def import_products(sid: str, body: ImportBody, user=Depends(require("products"))):
-    s = await get_supplier(sid)
+    await get_supplier(sid)
     created = []
     for it in body.items:
         sp = await db.supplier_products.find_one({"id": it.supplier_product_id, "supplier_id": sid}, {"_id": 0})

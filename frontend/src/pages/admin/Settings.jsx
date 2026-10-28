@@ -38,7 +38,7 @@ export default function Settings() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["admin-settings"], queryFn: () => api.get("/admin/settings").then((r) => r.data) });
   const [f, setF] = useState(null);
-  useEffect(() => { if (data) setF(data); }, [data]);
+  useEffect(() => { if (data) setF({ ...data, faq: (data.faq || []).map((q) => ({ ...q, _k: q._k || Math.random().toString(36).slice(2) })) }); }, [data]);
   if (!f) return <p className="text-sm">Loading…</p>;
   const u = (k, v) => setF((x) => ({ ...x, [k]: v }));
   const nested = (k, sub, v) => setF((x) => ({ ...x, [k]: { ...x[k], [sub]: v } }));
@@ -82,9 +82,9 @@ export default function Settings() {
         ))}
       </Card>
       <Card className="space-y-4">
-        <div className="flex justify-between"><p className="font-semibold">FAQ</p><button className={btnGhost} onClick={() => u("faq", [...f.faq, { q_en: "", q_my: "", a_en: "", a_my: "" }])} data-testid="faq-add-btn">Add question</button></div>
+        <div className="flex justify-between"><p className="font-semibold">FAQ</p><button className={btnGhost} onClick={() => u("faq", [...f.faq, { _k: Math.random().toString(36).slice(2), q_en: "", q_my: "", a_en: "", a_my: "" }])} data-testid="faq-add-btn">Add question</button></div>
         {f.faq.map((q, i) => (
-          <div key={i} className="grid md:grid-cols-2 gap-2 border-b pb-4">
+          <div key={q._k} className="grid md:grid-cols-2 gap-2 border-b pb-4">
             <input className={inp} placeholder="Question EN" value={q.q_en} onChange={(e) => faq(i, "q_en", e.target.value)} />
             <input className={inp} placeholder="Question MM" value={q.q_my} onChange={(e) => faq(i, "q_my", e.target.value)} />
             <textarea className={inp + " h-20 py-2"} placeholder="Answer EN" value={q.a_en} onChange={(e) => faq(i, "a_en", e.target.value)} />

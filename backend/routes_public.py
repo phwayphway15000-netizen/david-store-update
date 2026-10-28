@@ -9,8 +9,8 @@ from fastapi.responses import Response, HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from core import db, now_iso, get_object, rate_limit, client_ip, audit, logger
-from catalog import public_product, lookup_maps, effective_price
+from core import db, now_iso, get_object, rate_limit, client_ip, logger
+from catalog import public_product, lookup_maps
 import orders as O
 import tg_api
 import telegram_bot as TB

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Send, MessageCircle, Headphones, Copy, Check, ShieldCheck, Facebook } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -8,15 +8,59 @@ import { mmk } from "@/lib/fmt";
 import { StockBadge } from "./ProductCard";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+function MessengerDialog({ open, setOpen, p, v }) {
+  const { t } = useI18n();
+  const [msgr, setMsgr] = useState(null);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (open) setMsgr(null);
+  }, [open]);
+  const createRef = async () => {
+    setBusy(true);
+    try {
+      const { data } = await api.post("/checkout/messenger", { product_id: p.id, variant_id: v.id, customer_name: name });
+      setMsgr(data);
+    } catch (e) { toast.error(errMsg(e)); } finally { setBusy(false); }
+  };
+  const copy = async () => {
+    await navigator.clipboard.writeText(msgr.summary).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent data-testid="messenger-dialog">
+        <DialogHeader><DialogTitle>{t("order_msgr")}</DialogTitle></DialogHeader>
+        {!msgr ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">{p.name} · {v?.name} · <b>{mmk(v?.effective_price_mmk)}</b></p>
+            <input data-testid="messenger-name-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder={t("name_optional")} className="w-full h-11 rounded-xl border px-4 text-sm bg-transparent" />
+            <button data-testid="messenger-create-ref-btn" onClick={createRef} disabled={busy} className="w-full h-11 rounded-xl bg-blue-600 text-white font-semibold">{busy ? "…" : t("create_ref")}</button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <pre data-testid="messenger-summary" className="whitespace-pre-wrap text-sm bg-slate-50 dark:bg-slate-900 rounded-xl p-4 font-mono">{msgr.summary}</pre>
+            <p className="text-xs text-muted-foreground">{t("msgr_hint")}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button data-testid="messenger-copy-btn" onClick={copy} className="h-11 rounded-xl border font-semibold inline-flex items-center justify-center gap-2">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{copied ? t("copied") : t("copy")}</button>
+              <a data-testid="messenger-open-btn" href={msgr.messenger_url} target="_blank" rel="noreferrer" className="h-11 rounded-xl bg-blue-600 text-white font-semibold inline-flex items-center justify-center gap-2"><MessageCircle className="h-4 w-4" />{t("open_msgr")}</a>
+            </div>
+            <Link data-testid="messenger-track-link" to={`/track?ref=${msgr.order_ref}&token=${msgr.track_token}`} className="block text-center text-sm text-blue-600 underline">{t("track")} — {msgr.order_ref}</Link>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function BuyPanel({ p, settings }) {
   const { t } = useI18n();
   const first = p.variants.find((v) => v.available) || p.variants[0];
   const [vid, setVid] = useState(first?.id);
   const [busy, setBusy] = useState("");
-  const [msgr, setMsgr] = useState(null);
-  const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const v = p.variants.find((x) => x.id === vid) || first;
 
   const buyTelegram = async () => {
@@ -29,18 +73,6 @@ export default function BuyPanel({ p, settings }) {
       win?.close();
       toast.error(errMsg(e));
     } finally { setBusy(""); }
-  };
-  const createRef = async () => {
-    setBusy("ms");
-    try {
-      const { data } = await api.post("/checkout/messenger", { product_id: p.id, variant_id: v.id, customer_name: name });
-      setMsgr(data);
-    } catch (e) { toast.error(errMsg(e)); } finally { setBusy(""); }
-  };
-  const copy = async () => {
-    await navigator.clipboard.writeText(msgr.summary).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
   };
   const share = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${BACKEND}/api/og/product/${p.slug}`)}`;
 
@@ -74,7 +106,7 @@ export default function BuyPanel({ p, settings }) {
           <Send className="h-4 w-4" /> {busy === "tg" ? "…" : t("buy_tg")}
         </button>
         {!settings?.telegram_checkout_enabled && <p className="text-xs text-amber-700" data-testid="telegram-off-note">{t("tg_off")}</p>}
-        <button data-testid="order-messenger-btn" onClick={() => { setMsgr(null); setOpen(true); }} disabled={!v?.available}
+        <button data-testid="order-messenger-btn" onClick={() => setOpen(true)} disabled={!v?.available}
           className="h-12 rounded-xl border-2 border-[#0A1128] dark:border-slate-600 hover:bg-[#0A1128] hover:text-white disabled:opacity-50 font-semibold inline-flex items-center justify-center gap-2 transition-colors">
           <MessageCircle className="h-4 w-4" /> {t("order_msgr")}
         </button>
@@ -85,28 +117,7 @@ export default function BuyPanel({ p, settings }) {
       </div>
       <p className="mt-4 text-xs text-muted-foreground flex gap-1.5"><ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />{t("no_pw")}</p>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent data-testid="messenger-dialog">
-          <DialogHeader><DialogTitle>{t("order_msgr")}</DialogTitle></DialogHeader>
-          {!msgr ? (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">{p.name} · {v?.name} · <b>{mmk(v?.effective_price_mmk)}</b></p>
-              <input data-testid="messenger-name-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder={t("name_optional")} className="w-full h-11 rounded-xl border px-4 text-sm bg-transparent" />
-              <button data-testid="messenger-create-ref-btn" onClick={createRef} disabled={busy === "ms"} className="w-full h-11 rounded-xl bg-blue-600 text-white font-semibold">{busy === "ms" ? "…" : t("create_ref")}</button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <pre data-testid="messenger-summary" className="whitespace-pre-wrap text-sm bg-slate-50 dark:bg-slate-900 rounded-xl p-4 font-mono">{msgr.summary}</pre>
-              <p className="text-xs text-muted-foreground">{t("msgr_hint")}</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button data-testid="messenger-copy-btn" onClick={copy} className="h-11 rounded-xl border font-semibold inline-flex items-center justify-center gap-2">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{copied ? t("copied") : t("copy")}</button>
-                <a data-testid="messenger-open-btn" href={msgr.messenger_url} target="_blank" rel="noreferrer" className="h-11 rounded-xl bg-blue-600 text-white font-semibold inline-flex items-center justify-center gap-2"><MessageCircle className="h-4 w-4" />{t("open_msgr")}</a>
-              </div>
-              <Link data-testid="messenger-track-link" to={`/track?ref=${msgr.order_ref}&token=${msgr.track_token}`} className="block text-center text-sm text-blue-600 underline">{t("track")} — {msgr.order_ref}</Link>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <MessengerDialog open={open} setOpen={setOpen} p={p} v={v} />
     </div>
   );
 }

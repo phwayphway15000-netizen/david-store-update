@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Outlet, Link, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { LayoutDashboard, Package, Tags, PlugZap, Inbox, Megaphone, Wallet, Users, Settings, ScrollText, LogOut, Menu, Store } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -14,6 +14,7 @@ export default function AdminLayout() {
   const { user, logout, can } = useAuth();
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const navItems = useMemo(() => NAV.filter((n) => can(n[3])), [user]); // eslint-disable-line react-hooks/exhaustive-deps
   if (user === null) return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">Loading…</div>;
   if (!user) return <Navigate to="/admin/login" replace />;
   const seg = pathname.split("/")[2] || "";
@@ -26,7 +27,7 @@ export default function AdminLayout() {
         <span className="text-white font-semibold text-sm">Store Operations</span>
       </Link>
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-        {NAV.filter((n) => can(n[3])).map(([to, label, I]) => (
+        {navItems.map(([to, label, I]) => (
           <NavLink key={to} to={`/admin${to ? "/" + to : ""}`} end={!to} onClick={() => setOpen(false)} data-testid={`admin-nav-${to || "dashboard"}`}
             className={({ isActive }) => `flex items-center gap-3 px-3 h-10 rounded-lg text-sm transition-colors ${isActive ? "bg-blue-600 text-white" : "hover:bg-white/5"}`}>
             <I className="h-4 w-4" />{label}

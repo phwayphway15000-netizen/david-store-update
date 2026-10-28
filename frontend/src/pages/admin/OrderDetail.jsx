@@ -30,26 +30,77 @@ function Confirm({ c, setC, run }) {
   );
 }
 
+function Timeline({ events }) {
+  return (
+    <Card>
+      <p className="font-semibold mb-3">Audit trail</p>
+      <ol className="relative border-l ml-2 space-y-4" data-testid="order-timeline">
+        {events.map((e) => (
+          <li key={e.id} className="ml-4">
+            <span className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-blue-600" />
+            <p className="text-sm font-medium">{e.action.replace(/_/g, " ")}</p>
+            <p className="text-xs text-muted-foreground">{statusLabel(e.from_status)} → {statusLabel(e.to_status)}</p>
+            <p className="text-xs text-muted-foreground">{e.actor?.name || e.actor?.type} · {fmtDate(e.created_at)}</p>
+            {e.note && <p className="text-xs mt-1">“{e.note}”</p>}
+          </li>
+        ))}
+      </ol>
+    </Card>
+  );
+}
+
+function DeliveryForm({ o, onDone }) {
+  const [del, setDel] = useState({ artifact_type: "instructions", content: "" });
+  const deliver = async () => {
+    try { const { data } = await api.post(`/admin/orders/${o.id}/deliver`, del); toast.success(`Delivery: ${data.result}`); setDel({ ...del, content: "" }); onDone(); } catch (e) { toast.error(errMsg(e)); }
+  };
+  return (
+    <Card className="space-y-3" data-testid="delivery-form">
+      <p className="font-semibold">Deliver product</p>
+      <p className="text-xs text-muted-foreground">{o.channel === "telegram" ? "Sent securely to the customer's verified Telegram chat. Stored encrypted; purged on completion." : "Stored encrypted. Hand it over via Messenger yourself, then press “Confirm manual delivery”."}</p>
+      <select data-testid="delivery-type-select" className={inp + " max-w-xs"} value={del.artifact_type} onChange={(e) => setDel({ ...del, artifact_type: e.target.value })}>{["license", "activation_link", "instructions", "credentials", "other"].map((x) => <option key={x}>{x}</option>)}</select>
+      <textarea data-testid="delivery-content-input" className={inp + " h-28 py-2"} value={del.content} onChange={(e) => setDel({ ...del, content: e.target.value })} placeholder="License key, activation link or instructions" />
+      <button className={btnPrimary} disabled={!del.content} onClick={deliver} data-testid="delivery-submit-btn">Send delivery</button>
+    </Card>
+  );
+}
+
+function EvidenceCard({ o, onDone }) {
+  const [ev, setEv] = useState({ reference: "", file: null });
+  const add = async () => {
+    const fd = new FormData(); fd.append("reference", ev.reference); if (ev.file) fd.append("file", ev.file);
+    try { await api.post(`/admin/orders/${o.id}/evidence`, fd); toast.success("Evidence added"); setEv({ reference: "", file: null }); onDone(); } catch (e) { toast.error(errMsg(e)); }
+  };
+  const open = ["AWAITING_PAYMENT", "PAYMENT_REJECTED", "PAYMENT_SUBMITTED", "PAYMENT_UNDER_REVIEW"].includes(o.status);
+  return (
+    <Card>
+      <p className="font-semibold mb-3">Payment evidence</p>
+      <ul className="space-y-3" data-testid="evidence-list">
+        {o.evidence.map((e) => <li key={e.id} className="text-sm border rounded-lg p-3"><p><b>{e.kind}</b> · via {e.submitted_via} · <span className="text-muted-foreground">{e.review_status}</span> · {fmtDate(e.created_at)}</p>{e.reference && <p className="font-mono text-xs mt-1">{e.reference}</p>}{e.storage_path && <EvidenceImg ev={e} />}</li>)}
+        {!o.evidence.length && <li className="text-sm text-muted-foreground">No evidence submitted.</li>}
+      </ul>
+      {open && (
+        <div className="mt-4 flex flex-wrap gap-2 items-end">
+          <Field label="Transaction reference (from Messenger)"><input data-testid="evidence-ref-input" className={inp} value={ev.reference} onChange={(e) => setEv({ ...ev, reference: e.target.value })} /></Field>
+          <input type="file" accept="image/*" onChange={(e) => setEv({ ...ev, file: e.target.files[0] })} className="text-xs" data-testid="evidence-file-input" />
+          <button className={btnGhost} onClick={add} data-testid="evidence-submit-btn">Add evidence</button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function OrderDetail() {
   const { id } = useParams();
   const { can } = useAuth();
   const { data: o, refetch } = useQuery({ queryKey: ["order", id], queryFn: () => api.get(`/admin/orders/${id}`).then((r) => r.data) });
   const { data: team = [] } = useQuery({ queryKey: ["team"], enabled: can("users.view"), queryFn: () => api.get("/admin/users").then((r) => r.data) });
   const [c, setC] = useState(null);
-  const [del, setDel] = useState({ artifact_type: "instructions", content: "" });
-  const [ev, setEv] = useState({ reference: "", file: null });
   const [revealed, setRevealed] = useState({});
   if (!o) return <p className="text-sm">Loading…</p>;
   const it = o.items[0];
   const run = async (to, note) => {
     try { await api.post(`/admin/orders/${o.id}/transition`, { to, note: note || "" }); toast.success(`Order → ${statusLabel(to)}`); refetch(); } catch (e) { toast.error(errMsg(e)); }
-  };
-  const deliver = async () => {
-    try { const { data } = await api.post(`/admin/orders/${o.id}/deliver`, del); toast.success(`Delivery: ${data.result}`); setDel({ ...del, content: "" }); refetch(); } catch (e) { toast.error(errMsg(e)); }
-  };
-  const addEvidence = async () => {
-    const fd = new FormData(); fd.append("reference", ev.reference); if (ev.file) fd.append("file", ev.file);
-    try { await api.post(`/admin/orders/${o.id}/evidence`, fd); toast.success("Evidence added"); setEv({ reference: "", file: null }); refetch(); } catch (e) { toast.error(errMsg(e)); }
   };
   const reveal = async (aid) => {
     try { const { data } = await api.get(`/admin/orders/${o.id}/artifacts/${aid}`); setRevealed((r) => ({ ...r, [aid]: data.content })); } catch (e) { toast.error(errMsg(e)); }
@@ -93,30 +144,9 @@ export default function OrderDetail() {
             </div>
           </Card>
 
-          {canDeliver && can("orders.deliver") && (
-            <Card className="space-y-3" data-testid="delivery-form">
-              <p className="font-semibold">Deliver product</p>
-              <p className="text-xs text-muted-foreground">{o.channel === "telegram" ? "Sent securely to the customer's verified Telegram chat. Stored encrypted; purged on completion." : "Stored encrypted. Hand it over via Messenger yourself, then press “Confirm manual delivery”."}</p>
-              <select data-testid="delivery-type-select" className={inp + " max-w-xs"} value={del.artifact_type} onChange={(e) => setDel({ ...del, artifact_type: e.target.value })}>{["license", "activation_link", "instructions", "credentials", "other"].map((x) => <option key={x}>{x}</option>)}</select>
-              <textarea data-testid="delivery-content-input" className={inp + " h-28 py-2"} value={del.content} onChange={(e) => setDel({ ...del, content: e.target.value })} placeholder="License key, activation link or instructions" />
-              <button className={btnPrimary} disabled={!del.content} onClick={deliver} data-testid="delivery-submit-btn">Send delivery</button>
-            </Card>
-          )}
+          {canDeliver && can("orders.deliver") && <DeliveryForm o={o} onDone={refetch} />}
 
-          <Card>
-            <p className="font-semibold mb-3">Payment evidence</p>
-            <ul className="space-y-3" data-testid="evidence-list">
-              {o.evidence.map((e) => <li key={e.id} className="text-sm border rounded-lg p-3"><p><b>{e.kind}</b> · via {e.submitted_via} · <span className="text-muted-foreground">{e.review_status}</span> · {fmtDate(e.created_at)}</p>{e.reference && <p className="font-mono text-xs mt-1">{e.reference}</p>}{e.storage_path && <EvidenceImg ev={e} />}</li>)}
-              {!o.evidence.length && <li className="text-sm text-muted-foreground">No evidence submitted.</li>}
-            </ul>
-            {["AWAITING_PAYMENT", "PAYMENT_REJECTED", "PAYMENT_SUBMITTED", "PAYMENT_UNDER_REVIEW"].includes(s) && (
-              <div className="mt-4 flex flex-wrap gap-2 items-end">
-                <Field label="Transaction reference (from Messenger)"><input data-testid="evidence-ref-input" className={inp} value={ev.reference} onChange={(e) => setEv({ ...ev, reference: e.target.value })} /></Field>
-                <input type="file" accept="image/*" onChange={(e) => setEv({ ...ev, file: e.target.files[0] })} className="text-xs" data-testid="evidence-file-input" />
-                <button className={btnGhost} onClick={addEvidence} data-testid="evidence-submit-btn">Add evidence</button>
-              </div>
-            )}
-          </Card>
+          <EvidenceCard o={o} onDone={refetch} />
 
           {o.artifacts.length > 0 && (
             <Card><p className="font-semibold mb-3">Delivery artifacts</p>
@@ -132,20 +162,7 @@ export default function OrderDetail() {
               <select data-testid="order-assignee-select" className={inp} value={o.assignee_id || ""} onChange={(e) => assign(e.target.value)}><option value="">Unassigned</option>{team.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}</select>
             </Field>{o.notes && <p className="mt-3 text-sm text-muted-foreground">Note: {o.notes}</p>}</Card>
           )}
-          <Card>
-            <p className="font-semibold mb-3">Audit trail</p>
-            <ol className="relative border-l ml-2 space-y-4" data-testid="order-timeline">
-              {o.events.map((e) => (
-                <li key={e.id} className="ml-4">
-                  <span className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-blue-600" />
-                  <p className="text-sm font-medium">{e.action.replace(/_/g, " ")}</p>
-                  <p className="text-xs text-muted-foreground">{statusLabel(e.from_status)} → {statusLabel(e.to_status)}</p>
-                  <p className="text-xs text-muted-foreground">{e.actor?.name || e.actor?.type} · {fmtDate(e.created_at)}</p>
-                  {e.note && <p className="text-xs mt-1">“{e.note}”</p>}
-                </li>
-              ))}
-            </ol>
-          </Card>
+          <Timeline events={o.events} />
         </div>
       </div>
       <Confirm c={c} setC={setC} run={run} />

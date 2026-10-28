@@ -1,12 +1,12 @@
 import sys
 sys.path.insert(0, "/app/backend/tests")
-from conftest import login, BASE_URL, BE
+from conftest import login, BASE_URL, BE, OWNER_EMAIL, OWNER_PASSWORD
 from pymongo import MongoClient
 import requests
 
 API = f"{BASE_URL}/api"
 db = MongoClient(BE["MONGO_URL"])[BE["DB_NAME"]]
-s, _ = login("chutpakoda05@gmail.com", "-FkF3oEvLf-j")
+s, _ = login(OWNER_EMAIL, OWNER_PASSWORD)
 
 # DEMO-3 (stock 0) import -> should be out of stock on storefront
 sup = db.suppliers.find_one({"name": {"$regex": "^TEST_"}, "deleted_at": None})
@@ -33,4 +33,4 @@ for o in db.orders.find({"status": {"$in": ["AWAITING_PAYMENT", "PAYMENT_SUBMITT
     print("cancel", o["ref"], r.status_code)
 n = db.users.update_many({"email": {"$regex": "^test_"}, "active": True}, {"$set": {"active": False}}).modified_count
 print("deactivated users", n)
-print("owner ok:", login("chutpakoda05@gmail.com", "-FkF3oEvLf-j")[0] is not None)
+print("owner ok:", login(OWNER_EMAIL, OWNER_PASSWORD)[0] is not None)

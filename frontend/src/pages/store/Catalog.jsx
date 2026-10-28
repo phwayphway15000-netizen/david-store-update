@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { SlidersHorizontal, PackageSearch } from "lucide-react";
@@ -25,9 +25,13 @@ export default function Catalog({ promo = false }) {
   const [showF, setShowF] = useState(false);
   const f = { q: sp.get("q") || "", brand: sp.get("brand") || "", category: sp.get("category") || "", min_price: sp.get("min_price") || "",
     max_price: sp.get("max_price") || "", in_stock: sp.get("in_stock") === "true", sort: sp.get("sort") || "newest", promo: promo || sp.get("promo") === "true" };
-  const set = (k, v) => setSp((prev) => { const n = new URLSearchParams(prev); if (v === "" || v === false) n.delete(k); else n.set(k, v); return n; }, { replace: true });
-  useEffect(() => { setQ(sp.get("q") || ""); }, [sp]);
-  useEffect(() => { const h = setTimeout(() => { if (q !== f.q) set("q", q); }, 350); return () => clearTimeout(h); }, [q]); // eslint-disable-line
+  const set = useCallback((k, v) => setSp((prev) => { const n = new URLSearchParams(prev); if (v === "" || v === false) n.delete(k); else n.set(k, v); return n; }, { replace: true }), [setSp]);
+  const urlQ = sp.get("q") || "";
+  useEffect(() => { setQ(urlQ); }, [urlQ]);
+  useEffect(() => {
+    const h = setTimeout(() => { if (q !== urlQ) set("q", q); }, 350);
+    return () => clearTimeout(h);
+  }, [q, urlQ, set]);
 
   const params = new URLSearchParams(Object.entries(f).filter(([, v]) => v !== "" && v !== false));
   const query = useInfiniteQuery({
@@ -62,7 +66,7 @@ export default function Catalog({ promo = false }) {
         </aside>
         <div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5" data-testid="catalog-grid">
-            {query.isLoading ? Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />) : items.map((p, i) => <ProductCard key={p.id} p={p} i={i % 12} />)}
+            {query.isLoading ? Array.from({ length: 6 }, (_, i) => `sk-${i}`).map((k) => <CardSkeleton key={k} />) : items.map((p, i) => <ProductCard key={p.id} p={p} i={i % 12} />)}
           </div>
           {!query.isLoading && !items.length && (
             <div className="rounded-2xl border border-dashed p-16 text-center" data-testid="catalog-empty">
