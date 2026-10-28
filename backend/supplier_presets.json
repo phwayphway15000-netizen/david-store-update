@@ -1,0 +1,729 @@
+{
+ "schema_version": "1.0",
+ "preset_version": 1,
+ "suppliers": [
+  {
+   "name": "AIVaultHub",
+   "bot_username": "Gemini_Shop_Robot",
+   "enabled": true,
+   "base_url": "https://reseller.aivaulthub.store",
+   "documentation_url": "https://reseller.aivaulthub.store/api/v1/docs",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/v1/products",
+    "response_list_key": "products",
+    "field_mappings": {
+     "external_product_id": "service_id",
+     "name": "name",
+     "description": null,
+     "price": "_pricing_tiers_0",
+     "currency": "_root_currency",
+     "stock_status": "_fixed_stock",
+     "stock_quantity": "stock",
+     "product_url": null,
+     "brand": null,
+     "category": null
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "api_key_header",
+    "location": "header",
+    "name": "X-API-Key",
+    "prefix": ""
+   }
+  },
+  {
+   "name": "Acczone",
+   "bot_username": "Acczone_Store_bot",
+   "enabled": true,
+   "base_url": "https://api.acczone.xyz",
+   "documentation_url": "https://api.acczone.xyz/",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/getServices",
+    "response_list_key": null,
+    "field_mappings": {
+     "external_product_id": "key",
+     "name": "name",
+     "description": "description",
+     "price": "price",
+     "currency": "_fixed_USD",
+     "stock_status": "_fixed_stock",
+     "stock_quantity": "stock",
+     "product_url": null,
+     "brand": null,
+     "category": null
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "query_param",
+    "location": "query",
+    "name": "apikey",
+    "prefix": ""
+   }
+  },
+  {
+   "name": "Akunding",
+   "bot_username": "Akunding_store_bot",
+   "enabled": true,
+   "base_url": "https://akunding.shop",
+   "documentation_url": "https://akunding.shop/api/docs",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/v1/products",
+    "response_list_key": null,
+    "field_mappings": {
+     "external_product_id": "id",
+     "name": "name",
+     "description": "description",
+     "price": "your_price",
+     "currency": "_fixed_USD",
+     "stock_status": "_fixed_stock",
+     "stock_quantity": "stock",
+     "product_url": null,
+     "brand": null,
+     "category": null
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "bearer",
+    "location": "header",
+    "name": "Authorization",
+    "prefix": "Bearer "
+   }
+  },
+  {
+   "name": "BlackHatWorld",
+   "bot_username": "blackhatworld_bot",
+   "enabled": true,
+   "base_url": "http://54.255.147.200:3002",
+   "documentation_url": "http://54.255.147.200:3002/api/telegram-buyer/docs",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/telegram-buyer/products",
+    "response_list_key": "products",
+    "field_mappings": {
+     "external_product_id": "_id",
+     "name": "product_name",
+     "description": "description",
+     "price": "usdPricing",
+     "currency": "_fixed_USD",
+     "stock_status": "slotProductType",
+     "stock_quantity": "stats.available",
+     "product_url": null,
+     "brand": null,
+     "category": "slotProductType"
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "query_param",
+    "location": "query",
+    "name": "key",
+    "prefix": ""
+   }
+  },
+  {
+   "name": "Canboso",
+   "bot_username": "dollarstore24_bot",
+   "enabled": true,
+   "base_url": "https://canboso.com",
+   "documentation_url": "https://canboso.com/api/swagger",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/v2/telegram-buyer/products",
+    "response_list_key": "products",
+    "field_mappings": {
+     "external_product_id": "productId",
+     "name": "name",
+     "description": "description",
+     "price": "price.amount",
+     "currency": "price.currency",
+     "stock_status": "productType",
+     "stock_quantity": "availability.available",
+     "product_url": "image",
+     "brand": null,
+     "category": "productType"
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "query_param",
+    "location": "query",
+    "name": "key",
+    "prefix": ""
+   }
+  },
+  {
+   "name": "Chirago",
+   "bot_username": "chiragop79_bot",
+   "enabled": true,
+   "base_url": "https://chiragott.online",
+   "documentation_url": "https://chiragott.online/reseller-api",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/reseller-api/",
+    "response_list_key": "products",
+    "field_mappings": {
+     "external_product_id": "product_id",
+     "name": "name",
+     "description": "details",
+     "price": "price",
+     "currency": "_fixed_USDT",
+     "stock_status": "delivery",
+     "stock_quantity": "stock",
+     "product_url": "image_url",
+     "brand": null,
+     "category": "category"
+    },
+    "query_params": {
+     "action": "products"
+    },
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "bearer",
+    "location": "header",
+    "name": "Authorization",
+    "prefix": "Bearer "
+   }
+  },
+  {
+   "name": "CloudyStore",
+   "bot_username": "CloudyStoree_bot",
+   "enabled": true,
+   "base_url": "https://canboso.com",
+   "documentation_url": "https://canboso.com/api/swagger",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/v2/telegram-buyer/products",
+    "response_list_key": "products",
+    "field_mappings": {
+     "external_product_id": "productId",
+     "name": "name",
+     "description": "description",
+     "price": "price.amount",
+     "currency": "price.currency",
+     "stock_status": "productType",
+     "stock_quantity": "availability.available",
+     "product_url": "image",
+     "brand": null,
+     "category": "productType"
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "query_param",
+    "location": "query",
+    "name": "key",
+    "prefix": ""
+   }
+  },
+  {
+   "name": "Devine Store",
+   "bot_username": null,
+   "enabled": true,
+   "base_url": "https://api.aisubscriptions.shop",
+   "documentation_url": "https://api.aisubscriptions.shop/docs/api",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/public/v1/products",
+    "response_list_key": "products",
+    "field_mappings": {
+     "external_product_id": "id",
+     "name": "name",
+     "description": "description",
+     "warranty": "warranty",
+     "note": "note",
+     "price": "price",
+     "currency": "_fixed_USD",
+     "stock_status": "available",
+     "stock_quantity": "stock",
+     "brand": null,
+     "category": null
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 120,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "bearer",
+    "location": "header",
+    "name": "Authorization",
+    "prefix": "Bearer "
+   }
+  },
+  {
+   "name": "FatBunny",
+   "bot_username": "FatBunny_Hub_bot",
+   "enabled": true,
+   "base_url": "https://canboso.com",
+   "documentation_url": "https://canboso.com/api/swagger",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/v2/telegram-buyer/products",
+    "response_list_key": "products",
+    "field_mappings": {
+     "external_product_id": "productId",
+     "name": "name",
+     "description": "description",
+     "price": "price.amount",
+     "currency": "price.currency",
+     "stock_status": "productType",
+     "stock_quantity": "availability.available",
+     "product_url": "image",
+     "brand": null,
+     "category": "productType"
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "query_param",
+    "location": "query",
+    "name": "key",
+    "prefix": ""
+   }
+  },
+  {
+   "name": "HyleHub",
+   "bot_username": "hylehubstore_bot",
+   "enabled": true,
+   "base_url": "https://hypervin.xyz",
+   "documentation_url": "https://hypervin.xyz/apidocs",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/products",
+    "response_list_key": null,
+    "field_mappings": {
+     "external_product_id": "id",
+     "name": "name",
+     "description": "fullDescription",
+     "price": "_price_options_0_price",
+     "currency": "_price_options_0_currency",
+     "stock_status": "status",
+     "stock_quantity": null,
+     "product_url": "thumbnailUrl",
+     "brand": null,
+     "category": "categoryId"
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "bearer",
+    "location": "header",
+    "name": "Authorization",
+    "prefix": "Bearer "
+   }
+  },
+  {
+   "name": "MMOStore",
+   "bot_username": "mmostore_bot",
+   "enabled": true,
+   "base_url": "https://api.mmostore.qzz.io",
+   "documentation_url": "https://api.mmostore.qzz.io/apidocumentation",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/v1/products",
+    "response_list_key": "data",
+    "field_mappings": {
+     "external_product_id": "id",
+     "name": "name",
+     "description": "description",
+     "price": "price_usd",
+     "currency": "_fixed_USD",
+     "stock_status": "_fixed_stock",
+     "stock_quantity": "stock",
+     "product_url": null,
+     "brand": null,
+     "category": null
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "api_key_header",
+    "location": "header",
+    "name": "X-API-Key",
+    "prefix": ""
+   }
+  },
+  {
+   "name": "PremiumBhai",
+   "bot_username": "Premium_Bhai_bot",
+   "enabled": true,
+   "base_url": "https://premiumbhai.store",
+   "documentation_url": "https://premiumbhai.store/api/docs",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/telegram-buyer/products",
+    "response_list_key": "products",
+    "field_mappings": {
+     "external_product_id": "_id",
+     "name": "product_name",
+     "description": "description",
+     "price": "usdPricing",
+     "currency": "_fixed_USD",
+     "stock_status": "delivery_type",
+     "stock_quantity": "stats.available",
+     "product_url": null,
+     "brand": null,
+     "category": null
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "query_param",
+    "location": "query",
+    "name": "key",
+    "prefix": ""
+   }
+  },
+  {
+   "name": "Prmast",
+   "bot_username": "prmastbot",
+   "enabled": true,
+   "base_url": "https://bot.prmast.website",
+   "documentation_url": "https://bot.prmast.website/api/public/reseller",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/public/reseller/products",
+    "response_list_key": "products",
+    "field_mappings": {
+     "external_product_id": "product_id",
+     "name": "name",
+     "description": "description",
+     "price": "price_usd",
+     "currency": "_fixed_USD",
+     "stock_status": "status",
+     "stock_quantity": "stock",
+     "product_url": null,
+     "brand": null,
+     "category": "category_id"
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "bearer",
+    "location": "header",
+    "name": "Authorization",
+    "prefix": "Bearer "
+   }
+  },
+  {
+   "name": "Samayra",
+   "bot_username": "Samayraopbot",
+   "enabled": true,
+   "base_url": "https://a69264-1231.k.onjrnm.vip",
+   "documentation_url": "https://a69264-1231.k.onjrnm.vip/api/docs",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/v1/products",
+    "response_list_key": "data",
+    "field_mappings": {
+     "external_product_id": "code",
+     "name": "name",
+     "description": null,
+     "price": "sellingPrice",
+     "currency": "currency",
+     "stock_status": "_fixed_stock",
+     "stock_quantity": "stock",
+     "product_url": "iconUrl",
+     "brand": null,
+     "category": "category"
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "bearer",
+    "location": "header",
+    "name": "Authorization",
+    "prefix": "Bearer "
+   }
+  },
+  {
+   "name": "ShopeeLabs",
+   "bot_username": "ShopeeLabs_bot",
+   "enabled": true,
+   "base_url": "https://pirmelabs.mylabsstore.com",
+   "documentation_url": "https://pirmelabs.mylabsstore.com/docs",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/v1/products",
+    "response_list_key": "products",
+    "field_mappings": {
+     "external_product_id": "id",
+     "name": "name",
+     "description": "description",
+     "price": "list_price",
+     "currency": "_fixed_USD",
+     "stock_status": "delivery_mode",
+     "stock_quantity": null,
+     "product_url": null,
+     "brand": null,
+     "category": "category_id"
+    },
+    "query_params": {},
+    "pagination": {
+     "method": "offset",
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "bearer",
+    "location": "header",
+    "name": "Authorization",
+    "prefix": "Bearer "
+   }
+  },
+  {
+   "name": "StoreGPTPlus",
+   "bot_username": "loja_gpt_plus_bot",
+   "enabled": true,
+   "base_url": "https://api.storegptplus.com",
+   "documentation_url": "https://api.storegptplus.com/docs",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/v1/products",
+    "response_list_key": "products",
+    "field_mappings": {
+     "external_product_id": "product_key",
+     "name": "name",
+     "description": "description",
+     "price": "_pricing_tiers_0",
+     "currency": "currency",
+     "stock_status": "_fixed_stock",
+     "stock_quantity": "available_stock",
+     "product_url": null,
+     "brand": null,
+     "category": null
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "api_key_header",
+    "location": "header",
+    "name": "x-api-key",
+    "prefix": ""
+   }
+  },
+  {
+   "name": "TooloraX",
+   "bot_username": "TooloraXbot",
+   "enabled": true,
+   "base_url": "https://shopbot.00969600.xyz",
+   "documentation_url": "https://shopbot.00969600.xyz/shop-api/docs",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/shop-api/v1/products",
+    "response_list_key": "products",
+    "field_mappings": {
+     "external_product_id": "id",
+     "name": "name",
+     "description": "description",
+     "price": "unit_price",
+     "currency": "_fixed_USD",
+     "stock_status": "delivery_type",
+     "stock_quantity": "stock_count",
+     "product_url": "image_url",
+     "brand": null,
+     "category": null
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 30,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "api_key_header",
+    "location": "header",
+    "name": "X-Shop-API-Key",
+    "prefix": ""
+   }
+  },
+  {
+   "name": "VenteBot (storeBatmanBot)",
+   "bot_username": "storeBatmanBot",
+   "enabled": true,
+   "base_url": "https://web-production-1c7b1.up.railway.app",
+   "documentation_url": "https://web-production-1c7b1.up.railway.app/api/swagger/",
+   "sync_interval_minutes": 30,
+   "connector": {
+    "approved": true,
+    "method": "GET",
+    "products_endpoint": "/api/reseller/products",
+    "response_list_key": "products",
+    "field_mappings": {
+     "external_product_id": "id",
+     "name": "name",
+     "description": "description",
+     "price": "price_usd",
+     "currency": "_fixed_USD",
+     "stock_status": "delivery_type",
+     "stock_quantity": "stock",
+     "product_url": "image_url",
+     "brand": null,
+     "category": null
+    },
+    "query_params": {},
+    "pagination": {
+     "method": null,
+     "page_size": null
+    },
+    "rate_limit_rpm": 60,
+    "follow_redirects": false,
+    "https_required": true
+   },
+   "authentication": {
+    "type": "api_key_header",
+    "location": "header",
+    "name": "X-Reseller-Key",
+    "prefix": ""
+   }
+  }
+ ]
+}

@@ -104,6 +104,9 @@ async def safe_get(url, headers):
 
 
 async def fetch_items(s):
+    if s.get("preset_key"):
+        import connectors
+        return await connectors.fetch_preset(s)
     url = urljoin(s["base_url"].rstrip("/") + "/", s["products_endpoint"].lstrip("/"))
     status, body = await safe_get(url, headers_for(s))
     if status >= 400:
@@ -119,6 +122,10 @@ async def fetch_items(s):
 
 
 def normalize(s, raw):
+    if s.get("preset_key"):
+        import connectors
+        return connectors.normalize_preset(s, raw)
+
     def num(x):
         try:
             return float(x)
@@ -140,7 +147,7 @@ def public_supplier(s):
 
 
 async def get_supplier(sid):
-    s = await db.suppliers.find_one({"id": sid, "deleted_at": None}, {"_id": 0})
+    s = await db.suppliers.find_one({"id": sid, "deleted_at": None, "preset_key": None}, {"_id": 0})
     if not s:
         raise HTTPException(404, "Supplier not found")
     return s
@@ -175,16 +182,21 @@ async def upsert_supplier_product(s, n, raw, run, alerts):
         alerts.append(f"{n['name']}: {existing['cost']} → {n['cost']}")
         await db.price_history.insert_one({"id": new_id(), "kind": "supplier_cost", "supplier_id": s["id"],
                                            "external_id": n["external_id"], "old": existing["cost"], "new": n["cost"], "created_at": now_iso()})
+    if existing.get("stock") != n["stock"]:
+        run["stock_changes"] = run.get("stock_changes", 0) + 1
     await db.supplier_products.update_one({"id": existing["id"]}, {"$set": {**n, "last_seen_at": now_iso()}})
     run["updated_count"] += 1
 
 
 async def apply_to_variant(s, p, v, n):
     """Only supplier-owned fields change; selling price only when unlocked and a markup is configured."""
-    v["supplier_cost"], v["supplier_stock"], v["last_synced_at"] = n["cost"], n["stock"], now_iso()
-    if v.get("price_locked", True) or s.get("markup_percent") is None or n["cost"] is None:
+    cost = n["cost"]
+    if v.get("supplier_variant_key") is not None:
+        cost = next((x["cost"] for x in n.get("variants") or [] if x["key"] == v["supplier_variant_key"]), None)
+    v["supplier_cost"], v["supplier_stock"], v["last_synced_at"] = cost, n["stock"] if n["stock"] is not None else (0 if n.get("stock_status") == "out_of_stock" else 999), now_iso()
+    if v.get("price_locked", True) or s.get("markup_percent") is None or cost is None or s.get("preset_key"):
         return
-    newp = int(round(n["cost"] * (1 + s["markup_percent"] / 100)))
+    newp = int(round(cost * (1 + s["markup_percent"] / 100)))
     if newp != v.get("price_mmk"):
         await db.price_history.insert_one({"id": new_id(), "kind": "selling_price", "product_id": p["id"], "variant_id": v["id"],
                                            "old": v.get("price_mmk"), "new": newp, "source": "supplier_markup", "created_at": now_iso()})
@@ -236,7 +248,7 @@ async def run_sync(s, actor, trigger="manual"):
 async def scheduler_loop():
     while True:
         try:
-            async for s in db.suppliers.find({"active": True, "deleted_at": None, "sync_interval_minutes": {"$gt": 0}}, {"_id": 0}):
+            async for s in db.suppliers.find({"active": True, "deleted_at": None, "preset_key": None, "sync_interval_minutes": {"$gt": 0}}, {"_id": 0}):
                 last = s.get("last_sync_at")
                 due = not last or (now() - datetime.fromisoformat(last)).total_seconds() >= s["sync_interval_minutes"] * 60
                 if due:
@@ -268,7 +280,7 @@ def build_doc(body: SupplierIn, existing=None):
 
 @router.get("")
 async def list_suppliers(user=Depends(require("suppliers"))):
-    items = await db.suppliers.find({"deleted_at": None}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    items = await db.suppliers.find({"deleted_at": None, "preset_key": None}, {"_id": 0}).sort("created_at", -1).to_list(200)
     return [public_supplier(s) for s in items]
 
 

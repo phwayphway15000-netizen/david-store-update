@@ -25,6 +25,8 @@ import PaymentMethods from "@/pages/admin/PaymentMethods";
 import Users from "@/pages/admin/Users";
 import Settings from "@/pages/admin/Settings";
 import Audit from "@/pages/admin/Audit";
+import SupplierIntegrations from "@/pages/admin/SupplierIntegrations";
+import SupplierCatalogue from "@/pages/admin/SupplierCatalogue";
 
 function App() {
   return (
@@ -56,6 +58,8 @@ function App() {
               <Route path="users" element={<Users />} />
               <Route path="settings" element={<Settings />} />
               <Route path="audit" element={<Audit />} />
+              <Route path="supplier-integrations" element={<SupplierIntegrations />} />
+              <Route path="supplier-catalogue" element={<SupplierCatalogue />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

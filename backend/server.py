@@ -11,12 +11,14 @@ from seed import seed
 import routes_public
 import routes_admin
 import suppliers
+import connectors
 import telegram_bot as TB
 
 app = FastAPI(title="AI Tools By David Digital Store API")
 app.include_router(routes_public.router)
 app.include_router(routes_admin.router)
 app.include_router(suppliers.router)
+app.include_router(connectors.router)
 
 ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip() and o.strip() != "*"]
 if os.environ.get("FRONTEND_URL"):
@@ -44,8 +46,11 @@ app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_credentials=True
 @app.on_event("startup")
 async def startup():
     await seed()
+    await connectors.install_presets()
+    await db.supplier_products.create_index([("supplier_id", 1), ("name", 1)])
     init_storage()
     asyncio.create_task(suppliers.scheduler_loop())
+    asyncio.create_task(connectors.scheduler_loop())
     if os.environ.get("PUBLIC_BASE_URL"):
         try:
             await TB.register_webhook(os.environ["PUBLIC_BASE_URL"])
