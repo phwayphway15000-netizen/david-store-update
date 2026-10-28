@@ -476,11 +476,11 @@ async def import_items(body: ImportBody, user=Depends(require("products"))):
             variants = [{"id": new_id(), "name": v["name"], "duration": "", "price_mmk": int((it.manual_prices or {}).get(v["key"]) or compute_price(v["cost"], sp.get("currency"), rates, body.pricing)),
                          "promo_price_mmk": None, "promo_start": None, "promo_end": None, "stock_status": "out_of_stock" if out_of_stock else "in_stock", "stock_qty": None,
                          "stock_override": None, "supplier_id": sp["supplier_id"], "supplier_product_id": sp["external_id"], "supplier_variant_key": v["key"],
-                         "supplier_cost": v["cost"], "supplier_currency": sp.get("currency"), "supplier_stock": sp.get("stock") if sp.get("stock") is not None else (0 if out_of_stock or sp.get("stock_status") == "unknown" else 999),
+                         "supplier_cost": v["cost"], "supplier_currency": sp.get("currency"), "supplier_stock": S.stock_of(sp),
                          "last_synced_at": sp.get("last_synced_at"), "price_locked": True, "active": True} for v in sp.get("variants") or []]
-        except ValueError as e:
+        except (ValueError, KeyError, TypeError) as e:
             await db.supplier_products.update_one({"id": sp["id"]}, release)
-            errors.append({"id": it.supplier_product_id, "error": str(e)})
+            errors.append({"id": it.supplier_product_id, "error": str(e) or "invalid supplier data"})
             continue
         if not variants:
             await db.supplier_products.update_one({"id": sp["id"]}, release)
@@ -493,8 +493,12 @@ async def import_items(body: ImportBody, user=Depends(require("products"))):
              "activation_method": it.activation_method or "", "eligibility": "", "warranty": it.warranty or sp.get("warranty") or "",
              "delivery_time": "", "images": [sp["image"]] if sp.get("image") else [], "featured": False, "hot": False, "status": "draft",
              "source_type": "SUPPLIER_API", "variants": variants, "order_count": 0, "created_at": now_iso(), "updated_at": now_iso(), "deleted_at": None}
-        recompute(p)
-        await db.products.insert_one(dict(p))
+        try:
+            recompute(p)
+            await db.products.insert_one(dict(p))
+        except Exception:
+            await db.supplier_products.update_one({"id": sp["id"]}, release)
+            raise
         await db.supplier_products.update_one({"id": sp["id"]}, {"$set": {"review_status": "imported", "linked_product_id": p["id"]}})
         created.append(p["id"])
     await audit(actor_of(user), "supplier.catalogue_import", "product", None, {"created": len(created), "errors": len(errors)})

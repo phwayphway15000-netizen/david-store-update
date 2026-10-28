@@ -97,7 +97,7 @@ export default function SupplierIntegrations() {
       </PageHeader>
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-6">
         <Metric testid="m-total" label="Configured" value={m.total} /><Metric testid="m-connected" label="Connected" value={m.connected} /><Metric testid="m-attention" label="Need attention" value={m.attention} />
-        <Metric testid="m-imported" label="Imported products" value={m.imported_products} /><Metric label="Published" value={m.published} /><Metric label="Unpublished" value={m.unpublished} />
+        <Metric testid="m-imported" label="Catalogue items" value={m.imported_products} /><Metric label="Published" value={m.published} /><Metric label="Unpublished" value={m.unpublished} />
         <Metric label="Price changes (7d)" value={m.price_changes_7d} /><Metric label="Stock changes (7d)" value={m.stock_changes_7d} />
       </div>
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4" data-testid="integration-grid">

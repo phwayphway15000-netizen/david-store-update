@@ -190,12 +190,18 @@ async def upsert_supplier_product(s, n, raw, run, alerts):
     run["updated_count"] += 1
 
 
+def stock_of(n):
+    if n.get("stock") is not None:
+        return n["stock"]
+    return 0 if n.get("stock_status") == "out_of_stock" else 999
+
+
 async def apply_to_variant(s, p, v, n):
     """Only supplier-owned fields change; selling price only when unlocked and a markup is configured."""
     cost = n["cost"]
     if v.get("supplier_variant_key") is not None:
         cost = next((x["cost"] for x in n.get("variants") or [] if x["key"] == v["supplier_variant_key"]), None)
-    v["supplier_cost"], v["supplier_stock"], v["last_synced_at"] = cost, n["stock"] if n["stock"] is not None else (0 if n.get("stock_status") == "out_of_stock" else 999), now_iso()
+    v["supplier_cost"], v["supplier_stock"], v["last_synced_at"] = cost, stock_of(n), now_iso()
     if v.get("price_locked", True) or s.get("markup_percent") is None or cost is None or s.get("preset_key"):
         return
     newp = int(round(cost * (1 + s["markup_percent"] / 100)))

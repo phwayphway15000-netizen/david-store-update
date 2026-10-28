@@ -28,7 +28,7 @@ for x in db.suppliers.find({"name": {"$regex": "^TEST_"}, "deleted_at": None}):
     s.delete(f"{API}/admin/suppliers/{x['id']}")
     print("deleted supplier", x["name"])
 for o in db.orders.find({"status": {"$in": ["AWAITING_PAYMENT", "PAYMENT_SUBMITTED", "AWAITING_CUSTOMER_CONFIRMATION", "PAYMENT_REJECTED"]},
-                         "$or": [{"customer_name": {"$regex": "^TEST"}}, {"source": "WEBSITE_TELEGRAM"}]}):
+                         "customer_name": {"$regex": "^TEST"}, "ref": {"$ne": "DAV-2026-000001"}}):  # never touch real orders
     r = s.post(f"{API}/admin/orders/{o['id']}/transition", json={"to": "CANCELLED", "note": "TEST cleanup"})
     print("cancel", o["ref"], r.status_code)
 n = db.users.update_many({"email": {"$regex": "^test_"}, "active": True}, {"$set": {"active": False}}).modified_count

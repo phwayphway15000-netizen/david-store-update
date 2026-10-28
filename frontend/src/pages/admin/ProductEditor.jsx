@@ -33,7 +33,7 @@ function VariantRow({ v, i, set, remove }) {
       <div className="md:col-span-2 text-xs text-muted-foreground self-end space-y-0.5">
         {v.supplier_product_id ? <>
           <p>Supplier ref: <span className="font-mono">{v.supplier_product_id}</span></p>
-          <p>Supplier cost: <b>{v.supplier_cost != null ? mmk(v.supplier_cost) : "—"}</b> · Supplier stock: <b>{v.supplier_stock ?? "—"}</b></p>
+          <p>Supplier cost: <b>{v.supplier_cost == null ? "—" : v.supplier_currency && v.supplier_currency !== "MMK" ? `${v.supplier_cost} ${v.supplier_currency}` : mmk(v.supplier_cost)}</b> · Supplier stock: <b>{v.supplier_stock ?? "—"}</b></p>
           <p>Last synced: {fmtDate(v.last_synced_at)} (snapshot, not real-time)</p>
         </> : <p>Manual plan (no supplier mapping)</p>}
       </div>

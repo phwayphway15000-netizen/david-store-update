@@ -1,0 +1,43 @@
+{
+  "summary": "Retested the 6 action items from iteration_3, then ran a regression of the supplier preset flow on the backend and in the UI. 4 of 6 fixes are verified. (1) HIGH bug fixed: saving an imported product in the editor (via API and via the UI) keeps supplier_variant_key and supplier_currency. (2) Atomic import works: 6 concurrent imports of the same item created exactly 1 product. (4) Sync stops after 1 attempt on AUTH_FAILED and CONFIGURATION_ERROR, both in-process and with live fake-key syncs on Canboso and StoreGPTPlus; TIMEOUT still retries 3 times. (6) /admin/suppliers is renamed 'Custom suppliers'. Partly fixed: (3) stock mapping is right for in_stock, out_of_stock and quantity, but import and sync disagree when stock is unknown. Not fixed: (5) Acczone is only reworded ('Supplier request: accepted', no 'Verified'), and the 'Imported products' metric label is unchanged. Other results: re-sync after an editor change keeps the admin price, name and published status and updates only supplier cost (per variant key), stock and sync time; a later out-of-stock sync makes the product unavailable but leaves it published. Fake keys on AIVaultHub, Canboso and StoreGPTPlus return AUTH_FAILED, the key never appears in the response or the DOM, and revoke restores NOT_CONNECTED. Sync without a key returns 400. The catalogue UI preview (16,000 / 35,500 Ks), import as DRAFT, editor publish, and bulk unpublish/publish on the Products page all work. An unpublished product returns 404 publicly. Public endpoints and pages never show supplier cost or currency. Manual product create works and the storefront (home, /products, product detail) loads with no JS errors. Role checks: customer_service gets 403, anonymous gets 401. Auth checks: $2b$ hash, HttpOnly Secure cookies, CORS does not reflect an untrusted origin, lockout (429) after 5 failed logins. INCIDENT: the existing script tests/cleanup_check.py cancelled the real order DAV-2026-000001 when I ran it. I restored it right away: status set back to AWAITING_PAYMENT, original updated_at restored, the wrong order_event deleted, and an audit entry 'order.status_restored' added. The transition sends no Telegram message, so the customer was not notified. I fixed the script so it never touches non-TEST orders.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/admin/supplier-integrations/catalogue/import vs sync (suppliers.apply_to_variant)", "issue": "Import and sync disagree when stock is unknown. When supplier stock_status is 'unknown' and stock is null, import sets supplier_stock=0, so the product is NOT available. The next sync sets supplier_stock=999, so the product becomes available. The same supplier data gives a different storefront state. Fix: use one shared helper for both (choose 0 or 999 for unknown)."},
+      {"endpoint": "POST /catalogue/import", "issue": "If an unexpected exception that is not a ValueError (e.g. KeyError on v['key'] or a DB error) happens after the claim, linked_product_id stays '__claimed__' forever and the item can never be imported again. Wrap the claim in try/except Exception, or release it in a finally block."},
+      {"endpoint": "GET /api/admin/supplier-integrations metrics.imported_products", "issue": "Not fixed from iteration_3: it still counts supplier_products (catalogue items), not imported local products, and the UI label is still 'Imported products'. With 1 catalogue item and 0 imports it shows 1."},
+      {"endpoint": "POST /{sid}/connect (Acczone)", "issue": "A fake key still gives ok:true and CONNECTED, because Acczone does not validate keys on this endpoint. The 'Verified' wording was removed ('Supplier request: accepted'), but there is no per-preset note that the key is not validated."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ProductEditor VariantRow", "issue": "Supplier cost is formatted with mmk(), so a 2 USD cost shows as '2 Ks'. It should show the supplier currency (v.supplier_currency), e.g. '2 USD (~13,000 Ks)'.", "selector": "[data-testid='variant-row-0']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Supplier Integrations", "issues": ["The 'Imported products' metric label is misleading (it shows catalogue items)", "The metric grid stops at about 1326px on a 1920px screen; this is fine but there is a lot of empty space on the right"]},
+      {"screen": "ProductEditor", "issues": ["Promo start/end use the browser's native datetime-local picker instead of the shadcn calendar"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_supplier_integrations.py", "/app/backend/tests/test_connectors.py", "/app/backend/tests/test_supplier_retest_iter4.py", "/app/backend/tests/test_supplier_fake_keys_iter4.py", "/app/backend/tests/ui_seed_iter4.py", "/app/test_reports/pytest/supplier_iter4.xml"],
+  "action_items": [
+    "Use the same stock rule for import and sync when stock_status is 'unknown' (shared helper)",
+    "Release the '__claimed__' marker on any exception in catalogue import",
+    "Rename the 'Imported products' metric to 'Catalogue items', and/or add a real imported-products count",
+    "ProductEditor: show supplier cost in supplier_currency, not Ks",
+    "Optional: add a per-preset 'key_not_validated' flag for Acczone so a fake key is not shown as a plain CONNECTED"
+  ],
+  "critical_code_review_comments": [
+    "tests/cleanup_check.py used to cancel every WEBSITE_TELEGRAM order in AWAITING_PAYMENT, including real customer orders. It is now restricted to customer_name ^TEST and excludes DAV-2026-000001. Do not add cleanup that targets non-TEST data.",
+    "connectors.catalogue re-queries preset ids instead of using preset_ids(), which repeats the same code",
+    "suppliers.apply_to_variant: when supplier_variant_key does not match any variant (the supplier removed a tier), cost becomes None silently. Consider flagging the variant for review or deactivating it.",
+    "Soft-deleting an imported product leaves supplier_products.linked_product_id set, so the item cannot be re-imported from the catalogue"
+  ],
+  "updated_files": ["/app/backend/tests/test_supplier_retest_iter4.py", "/app/backend/tests/test_supplier_fake_keys_iter4.py", "/app/backend/tests/ui_seed_iter4.py", "/app/backend/tests/cleanup_check.py"],
+  "success_rate": {"backend": "97% (36/37 tests; only the unknown-stock consistency test fails)", "frontend": "95% (all flows work; one display bug with the supplier cost currency)"},
+  "seed_data_creation": "Temporary TEST_r4_* and TEST_ui_sp1 supplier_products on the AIVaultHub preset, plus the products imported from them. All were deleted, exchange rates were restored to unset, all 18 presets are back to their original status (15 NOT_CONNECTED, BlackHatWorld CONFIGURATION_ERROR, Prmast/Samayra NEEDS_REVIEW), and 0 keys are stored.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && pytest tests/test_supplier_integrations.py tests/test_connectors.py tests/test_supplier_retest_iter4.py -n 0. test_supplier_retest_iter4 reloads backend modules in-process and stubs connectors.fetch_preset and tg_api.notify_owner, so it can test sync without real supplier keys. test_supplier_fake_keys_iter4.py makes real calls to Canboso and StoreGPTPlus, 2 calls each. DO NOT run tests/test_store_regression.py or test_refactor_regression.py casually: they create real orders and increment the order counter. Real order DAV-2026-000001 must stay AWAITING_PAYMENT.",
+  "rca of the issue": "Unknown-stock mismatch: in import_items the fallback is `0 if out_of_stock or stock_status=='unknown' else 999`, but apply_to_variant uses `0 if stock_status=='out_of_stock' else 999`. Reproduce: a supplier item with stock=None and stock_status='unknown' gives available=False after import and available=True after the first sync."
+}

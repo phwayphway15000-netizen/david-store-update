@@ -32,7 +32,8 @@ Owner (David), Admin, Product Manager, Customer Service staff; Myanmar customers
 - Per-supplier sync lock, scheduler (interval per preset), sync-all, revoke/replace key, settings (interval/disable).
 - Supplier Catalogue: filters, exchange rates -> MMK, pricing strategies + preview, bulk import as DRAFT (atomic claim), reset-to-supplier field action. Field ownership: sync only touches supplier cost/stock/sync time.
 - Status: BlackHatWorld CONFIGURATION_ERROR (HTTP), Prmast/Samayra NEEDS_REVIEW; others CONFIGURATION READY (no live keys supplied).
-- Tests: backend/tests/test_connectors.py (mocked) 7/7; iteration_3 60/61 then fixes applied.
+- Tests: backend/tests/test_connectors.py (mocked) 7/7; iteration_3 60/61 then fixes applied; iteration_4 verified variant-key preservation, atomic import, no-retry on auth/config errors.
+- 2026-10-28: user chose to enter real keys themselves in Admin (AIVaultHub, Acczone, Canboso, StoreGPTPlus + all); imported products stay hidden until reviewed. Shared stock rule (suppliers.stock_of) for import+sync, claim released on any import error, metric renamed 'Catalogue items', editor shows supplier cost in its currency. No real keys connected yet.
 
 ## Backlog
 - P1: Official Meta Messenger Platform connector (needs Page token + App Review); Turnstile on suspicious checkout; DNS-pinning for supplier requests; Burmese status labels on Track page.
