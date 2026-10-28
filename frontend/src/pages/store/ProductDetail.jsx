@@ -19,7 +19,7 @@ export default function ProductDetail() {
   }, [p]);
   if (isLoading) return <div className="container-x py-16"><div className="h-96 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse" /></div>;
   if (isError || !p) return <div className="container-x py-24 text-center" data-testid="product-not-found"><p className="text-lg">Product not found.</p><Link to="/products" className="text-blue-600">{t("all_products")}</Link></div>;
-  const rows = [["product_type", p.product_type], ["activation", p.activation_method], ["eligibility", p.eligibility], ["warranty", p.warranty], ["delivery", p.delivery_time]];
+  const rows = [["brand", p.brand?.name], ["product_type", p.product_type], ["activation", p.activation_method], ["eligibility", p.eligibility], ["warranty", p.warranty], ["delivery", p.delivery_time]];
   return (
     <div className="container-x py-8">
       <nav className="flex items-center gap-1 text-xs text-muted-foreground mb-6">

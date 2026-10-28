@@ -152,6 +152,8 @@ async def approve_payment(order_id, actor, note=None):
 
 
 async def reject_payment(order_id, actor, reason):
+    if not (reason or "").strip():
+        raise OrderError("A rejection reason is required")
     res, changed = await transition(order_id, "PAYMENT_REJECTED", actor, "payment_rejected", reason,
                                     allowed_from={"PAYMENT_SUBMITTED", "PAYMENT_UNDER_REVIEW"})
     if changed:
@@ -221,6 +223,8 @@ async def deliver(order_id, artifact_type, content, actor):
 
 
 async def confirm_manual_delivery(order_id, actor, note):
+    if not (note or "").strip():
+        raise OrderError("Describe how the product was handed over (note required)")
     res, changed = await transition(order_id, "DELIVERED", actor, "delivered_manual", note or "Manual handoff confirmed",
                                     {"delivered_at": now_iso()}, allowed_from={"PAID_AWAITING_FULFILLMENT", "FULFILLMENT_IN_PROGRESS"})
     if changed:

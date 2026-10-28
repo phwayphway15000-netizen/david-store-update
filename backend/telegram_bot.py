@@ -271,7 +271,7 @@ async def receive_evidence(msg, chat_id, order_id):
     await db.payment_evidence.insert_one(ev)
     actor = {"type": "telegram_customer", "id": chat_id}
     if o["status"] in {"AWAITING_PAYMENT", "PAYMENT_REJECTED"}:
-        o, _ = await O.transition(order_id, "PAYMENT_SUBMITTED", actor, "payment_evidence_submitted", ev["kind"])
+        o, _ = await O.transition(order_id, "PAYMENT_SUBMITTED", actor, "payment_evidence_submitted", ev.get("reference") or ev["kind"])
     await set_session(chat_id, None)
     await send(chat_id, f"📨 Evidence received for <b>{o['ref']}</b>.\nကျွန်ုပ်တို့ စစ်ဆေးပြီး အကြောင်းပြန်ပါမည်။ "
                         "Your payment is pending manual verification.")

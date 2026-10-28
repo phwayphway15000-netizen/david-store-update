@@ -1,0 +1,62 @@
+{
+  "summary": "First full E2E run (backend pytest 36 tests + Playwright UI on desktop 1920 and mobile 390). Core flows work end-to-end: storefront (MM/EN, dark mode, catalog filters, promotions, product detail with variants), Telegram deep-link checkout, Messenger order ref + copy + track, Telegram webhook simulation (secret 403, duplicate update_id, /start token, c:<intent> -> WEBSITE_TELEGRAM AWAITING_PAYMENT order, non-owner a:approve_yes refused + audited), admin login/lockout, product CRUD/promo validation/bulk/image upload/CSV import, supplier framework (SSRF blocks, masked key, validate/test/sync 4 items, DEMO-3 stock 0 -> out of stock, import + price_locked respected on re-sync, sync history), KBZPay enable validation, full order state machine via admin UI (evidence -> reject -> evidence -> approve (idempotent) -> manual deliver -> confirm -> complete, artifact purged 410), RBAC (CS 403 on approve/deliver/products/suppliers, UI shows no-approve-permission; PM 403 on orders; deactivated user tokens revoked), dashboard revenue = COMPLETED only, audit log, OG/sitemap/robots. 32/36 backend tests pass; the 4 failures are real findings (XFF lockout bypass, sitemap/OG host mismatch, CSV multi-plan rows not grouped, reject without note allowed). One confirmed UI logic bug on Order detail ('Customer confirmed' button shown in payment-review states).",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "core.client_ip (used by /api/auth/login lockout, /api/checkout/* and /api/orders/track rate limits)", "issue": "Uses the FIRST X-Forwarded-For value, which is client-controlled (ingress appends the real IP). After 5 failed logins (429), the same email immediately returns 401 again when the request sends 'X-Forwarded-For: 8.8.4.4' -> brute-force lockout and checkout rate limit are trivially bypassable. Use the last (ingress-appended) hop / a trusted-proxy count instead.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "PUBLIC_BASE_URL / FRONTEND_URL in backend/.env", "issue": "Point to https://629dddf4-...preview.emergentagent.com while the current app URL (REACT_APP_BACKEND_URL) is https://dav-ai-store--1vf4dwgp.preview.emergentagent.com. sitemap.xml <loc>, OG og:url/canonical, and Telegram webhook registration all use the old host; CORS ORIGINS also only contains the old host. Old host currently still responds so things work, but this must be updated/derived per environment before deploy."},
+      {"endpoint": "POST /api/admin/orders/{id}/transition to PAYMENT_REJECTED", "issue": "Rejection reason is not required server-side (note='' -> 200). The UI shows a 'Reason / note' textarea but also does not enforce it. The Telegram customer then gets 'Reason: -'."},
+      {"endpoint": "POST /api/admin/products/import", "issue": "Each CSV row creates a separate product; rows with the same name but different plan/duration (e.g. 'X,1 Month' and 'X,1 Year') create 2 products with 1 plan each instead of 1 product with 2 plans. Also brand/category lookup uses an unescaped regex (f'^{name}$') -> names like 'C++' or '(Pro)' break or mis-match; use re.escape."},
+      {"endpoint": "POST /api/auth/login lockout", "issue": "After lock expires the count stays >=5 and each new failure re-locks immediately for 15 min (count never resets on expiry). Also refresh endpoint issues new tokens without checking the user is still active (access tokens are checked on use, so impact is low)."},
+      {"endpoint": "Order flow: DELIVERED transition", "issue": "'Confirm manual delivery' (to DELIVERED) is allowed directly from PAID_AWAITING_FULFILLMENT without any delivery artifact being recorded. Consider requiring a deliveries record or explicit note."},
+      {"endpoint": "suppliers.check_url", "issue": "DNS is resolved in check_url and again by httpx (TOCTOU / DNS rebinding). Low risk; pin resolved IP or use a transport that validates the connected address."},
+      {"endpoint": "GET /api/admin/dashboard", "issue": "Revenue is bucketed by order created_at rather than completed_at/paid_at; an order created before the window but completed inside it is excluded."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "admin/OrderDetail.jsx line 82", "issue": "'Customer confirmed' button (to AWAITING_PAYMENT) renders whenever AWAITING_PAYMENT is an allowed transition, i.e. also in PAYMENT_SUBMITTED / PAYMENT_UNDER_REVIEW / PAYMENT_REJECTED. Clicking it in review states actually triggers request_more_evidence (no note) and messages the customer. It also duplicates data-testid 'action-awaiting_payment' with 'Request more evidence'. Restrict to s in {CHECKOUT_STARTED, AWAITING_CUSTOMER_CONFIRMATION} and give unique testids.", "selector": "[data-testid='action-awaiting_payment']", "priority": "HIGH"},
+      {"component": "store/Catalog.jsx set()", "issue": "set() builds from the render-time 'sp' closure (new URLSearchParams(sp)). Two filter changes in quick succession (or the 350ms debounced search firing after another filter change) overwrite each other; e.g. clearing min and max price quickly left min_price=20000 in the URL. Use setSp(prev => {...}) functional updates.", "selector": "[data-testid='filter-min-price']", "priority": "MEDIUM"},
+      {"component": "Admin routes", "issue": "No client-side route guard by permission: a customer_service user can open /admin/products and /admin/suppliers directly and sees the page shell with 'Import CSV/XLSX' and 'New product' buttons (API correctly returns 403). Redirect or show a 'no permission' state.", "selector": "/admin/products", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Storefront footer", "issues": ["Placeholder text '[Add support email in Admin → Settings]' is visible to customers"]},
+      {"screen": "Product detail (seed products)", "issues": ["Placeholders '[Set activation method]', '[Set eligibility requirements]', '[Set warranty terms]', '[Set delivery time]' shown to customers", "Details grid with odd number of cells leaves an empty grey cell"]},
+      {"screen": "Track page", "issues": ["Status label is English ('Awaiting customer confirmation') while UI language is Burmese"]},
+      {"screen": "Admin product editor", "issues": ["New plan rows default duration to '1 month' (a '3 Months' plan saved with duration '1 month' if not edited)"]},
+      {"screen": "Admin order detail", "issues": ["Evidence input uses unstyled native file input ('Choose File')", "Timeline note shows internal kind 'transaction_reference' instead of the reference value"]},
+      {"screen": "Admin supplier detail", "issues": ["Validate/Test/Sync results shown as raw JSON dump", "Section numbering jumps (3 -> 5)"]},
+      {"screen": "Mobile 390px", "issues": ["Catalog: 'Filters' label duplicated (toggle button + panel header)", "Admin orders table cramped: order refs wrap into 3 lines and status column is off-screen (needs horizontal scroll or card layout)"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_store_regression.py", "/app/backend/tests/conftest.py", "/app/backend/tests/cleanup_check.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "HIGH: Fix client_ip() to not trust the first X-Forwarded-For value (use the last hop appended by the ingress) so login lockout and checkout/track rate limits cannot be bypassed",
+    "HIGH: OrderDetail.jsx – only show 'Customer confirmed' for CHECKOUT_STARTED/AWAITING_CUSTOMER_CONFIRMATION; make action data-testids unique",
+    "Require a non-empty note for PAYMENT_REJECTED (backend 400 + frontend validation); consider same for CANCELLED/refund",
+    "Update PUBLIC_BASE_URL / FRONTEND_URL (or derive from request host) to the current app URL; re-register Telegram webhook; sitemap/OG canonical use it",
+    "CSV import: group rows by product name into one product with multiple plans; re.escape brand/category names",
+    "Catalog.jsx: use functional setSearchParams updates to avoid lost filter changes",
+    "Reset login_attempts count when lock has expired",
+    "Optional: permission-based route guard in admin; hide seed placeholders on storefront; mobile admin orders table layout"
+  ],
+  "critical_code_review_comments": [
+    "core.client_ip trusts spoofable X-Forwarded-For[0] – affects all security controls keyed on IP",
+    "routes_admin.py is 761 lines – split auth/users, products, orders, settings into separate routers",
+    "login(): lock window re-arms on every failure and count never decays; consider count reset when locked_until < now",
+    "refresh(): does not verify user active/not deleted before issuing new cookies",
+    "import_products(): unescaped regex from CSV input in brand/category lookup",
+    "OrderDetail 'A()' helper renders buttons purely from allowed_transitions, so semantic labels can be wrong for the current state (Customer confirmed vs Request more evidence)",
+    "Positive: atomic CAS transitions, delivery lock, idempotent approve, encrypted artifacts purged on completion, secrets masked, SSRF checks, webhook secret compare_digest, unique update_id index – all verified working"
+  ],
+  "updated_files": ["/app/backend/tests/test_store_regression.py", "/app/backend/tests/conftest.py", "/app/backend/tests/cleanup_check.py"],
+  "success_rate": {"backend": "89% (32/36; 4 failures are genuine findings)", "frontend": "~90% (all requested flows work; 1 logic bug in order actions, 1 stale-state filter bug, design nits)"},
+  "test_credentials": "Owner chutpakoda05@gmail.com / -FkF3oEvLf-j (from /app/memory/test_credentials.md) – works; bcrypt $2b$ verified; httpOnly+Secure cookies set; seed only creates admin if missing",
+  "seed_data_creation": "Created and cleaned up TEST_ products, TEST_ suppliers, test_* users (deactivated). Test orders DAV-2026-000002..000009 created (cancelled or completed). NOTE: cleanup also cancelled the pre-existing smoke-test order DAV-2026-000001 (WEBSITE_MESSENGER). KBZPay was briefly enabled with TEST account then restored to original (disabled, empty). Some lockout entries exist for test_lock_*/test_xff_* emails only (owner not locked).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/ -v (pytest.ini forces -n 2 xdist). Tests use pymongo directly to read checkout_intents (intent id for c:<id> callback). Fake Telegram chat ids ~990xxxxxx; bot sends to them fail harmlessly; owner receives real notify_owner messages on order creation (unavoidable). Checkout rate limit 15/5min per IP – suite uses ~4 checkout calls. After running, run tests/cleanup_check.py to delete TEST_ data (beware it cancels any non-final order with TEST customer name or WEBSITE_TELEGRAM source). Expected-to-fail-until-fixed tests: test_lockout_bypass_via_xff, test_sitemap_uses_current_host, test_csv_import_drafts (multi-plan grouping), test_reject_requires_note.",
+  "rca of the issue": "XFF bypass: core.client_ip returns request.headers['x-forwarded-for'].split(',')[0]; Kubernetes ingress appends the real client IP to any client-supplied XFF, so element [0] is attacker-controlled. Repro: 5 failed logins for an email -> 429; 6th with header X-Forwarded-For: 8.8.4.4 -> 401 (attempt counted under a new identifier). Mitigation: use the right-most untrusted hop (e.g. split(',')[-1]) or configure a trusted proxy count. 'Customer confirmed' bug: OrderDetail.jsx line 82 calls A('Customer confirmed','AWAITING_PAYMENT') unconditionally; TRANSITIONS for PAYMENT_SUBMITTED include AWAITING_PAYMENT, so the button appears and maps to request_more_evidence on the backend."
+}

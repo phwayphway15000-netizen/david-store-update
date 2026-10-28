@@ -25,7 +25,7 @@ export default function Catalog({ promo = false }) {
   const [showF, setShowF] = useState(false);
   const f = { q: sp.get("q") || "", brand: sp.get("brand") || "", category: sp.get("category") || "", min_price: sp.get("min_price") || "",
     max_price: sp.get("max_price") || "", in_stock: sp.get("in_stock") === "true", sort: sp.get("sort") || "newest", promo: promo || sp.get("promo") === "true" };
-  const set = (k, v) => { const n = new URLSearchParams(sp); if (v === "" || v === false) n.delete(k); else n.set(k, v); setSp(n, { replace: true }); };
+  const set = (k, v) => setSp((prev) => { const n = new URLSearchParams(prev); if (v === "" || v === false) n.delete(k); else n.set(k, v); return n; }, { replace: true });
   useEffect(() => { setQ(sp.get("q") || ""); }, [sp]);
   useEffect(() => { const h = setTimeout(() => { if (q !== f.q) set("q", q); }, 350); return () => clearTimeout(h); }, [q]); // eslint-disable-line
 
@@ -47,7 +47,7 @@ export default function Catalog({ promo = false }) {
       <div className="mt-8 grid lg:grid-cols-[260px_1fr] gap-4 lg:gap-8">
         <button data-testid="toggle-filters-btn" onClick={() => setShowF(!showF)} className="lg:hidden h-10 rounded-xl border font-semibold text-sm inline-flex items-center justify-center gap-2"><SlidersHorizontal className="h-4 w-4" />Filters</button>
         <aside className={`${showF ? "block" : "hidden"} lg:block space-y-4 lg:sticky lg:top-32 self-start rounded-2xl border p-5 bg-card`} data-testid="catalog-filters">
-          <p className="flex items-center gap-2 font-semibold text-sm"><SlidersHorizontal className="h-4 w-4" />Filters</p>
+          <p className="hidden lg:flex items-center gap-2 font-semibold text-sm"><SlidersHorizontal className="h-4 w-4" />Filters</p>
           <input data-testid="catalog-search-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} className="w-full h-10 rounded-lg border bg-background px-3 text-sm" />
           <Select testid="filter-category" label={t("category")} value={f.category} onChange={(v) => set("category", v)} options={[["", t("all")], ...cats.map((c) => [c.slug, pick(c.name, c.name_my)])]} />
           <Select testid="filter-brand" label={t("brand")} value={f.brand} onChange={(v) => set("brand", v)} options={[["", t("all")], ...brands.map((b) => [b.slug, b.name])]} />

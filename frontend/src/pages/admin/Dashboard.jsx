@@ -44,10 +44,9 @@ export default function Dashboard() {
       <div className="mt-6 grid xl:grid-cols-3 gap-6">
         <Card className="xl:col-span-2">
           <p className="font-semibold mb-4">Verified revenue</p>
-          <div className="h-64">
+          {d.revenue_series.length ? <div className="h-64">
             <ResponsiveContainer><AreaChart data={d.revenue_series}><CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" /><XAxis dataKey="date" fontSize={11} /><YAxis fontSize={11} /><Tooltip /><Area dataKey="revenue" stroke="#2563EB" fill="#2563EB22" /></AreaChart></ResponsiveContainer>
-          </div>
-          {!d.revenue_series.length && <p className="text-xs text-muted-foreground -mt-32 text-center">No completed orders in this range yet.</p>}
+          </div> : <p className="h-64 grid place-items-center text-sm text-muted-foreground" data-testid="revenue-empty">No completed orders in this range yet.</p>}
         </Card>
         <Card data-testid="integration-health">
           <p className="font-semibold mb-3">Integrations & sync health</p>

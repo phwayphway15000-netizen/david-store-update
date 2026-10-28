@@ -45,8 +45,11 @@ async def login(body: LoginIn, request: Request, response: Response):
     email = body.email.lower()
     ident = f"{client_ip(request)}:{email}"
     att = await db.login_attempts.find_one({"identifier": ident}, {"_id": 0})
-    if att and att.get("count", 0) >= 5 and att.get("locked_until", "") > now_iso():
-        raise HTTPException(429, "Too many failed attempts. Try again in 15 minutes.")
+    if att and att.get("count", 0) >= 5:
+        if att.get("locked_until", "") > now_iso():
+            raise HTTPException(429, "Too many failed attempts. Try again in 15 minutes.")
+        att = None
+        await db.login_attempts.delete_one({"identifier": ident})
     u = await db.users.find_one({"email": email, "deleted_at": None}, {"_id": 0})
     if not u or not u.get("active") or not verify_password(body.password, u["password_hash"]):
         cnt = (att or {}).get("count", 0) + 1
@@ -79,6 +82,8 @@ async def refresh(request: Request, response: Response):
         assert payload.get("type") == "refresh"
     except Exception:
         raise HTTPException(401, "Invalid refresh token")
+    if not await db.users.find_one({"id": payload["sub"], "active": True, "deleted_at": None}):
+        raise HTTPException(401, "User inactive")
     set_cookies(response, payload["sub"])
     return {"ok": True}
 
@@ -367,34 +372,41 @@ async def import_products(file: UploadFile = File(...), user=Depends(require("pr
         rows = [{hdr[i]: (c if c is not None else "") for i, c in enumerate(r) if i < len(hdr)} for r in it]
     else:
         raise HTTPException(400, "Upload a .csv or .xlsx file")
-    created, errors = 0, []
+    import re
+    created, errors, groups = 0, [], {}
     for i, r in enumerate(rows[:2000], 2):
         r = {str(k).strip().lower(): str(v).strip() for k, v in r.items()}
         try:
             if not r.get("name"):
                 raise ValueError("name is required")
-            price = int(float(r.get("price_mmk") or "x"))
+            r["_price"] = int(float(r.get("price_mmk") or "x"))
+            groups.setdefault(r["name"].lower(), []).append(r)
+        except Exception as e:
+            errors.append({"row": i, "error": str(e)[:200] if not isinstance(e, ValueError) or "name" in str(e) else "price_mmk must be a number"})
+    for rs in groups.values():
+        r = rs[0]
+        try:
             bid = cid = None
             if r.get("brand"):
-                b = await db.brands.find_one({"name": {"$regex": f"^{r['brand']}$", "$options": "i"}, "deleted_at": None})
+                b = await db.brands.find_one({"name": {"$regex": f"^{re.escape(r['brand'])}$", "$options": "i"}, "deleted_at": None})
                 if not b:
                     b = {"id": new_id(), "name": r["brand"], "slug": slugify(r["brand"]).rsplit("-", 1)[0], "color": "#2563EB", "sort": 100, "created_at": now_iso(), "deleted_at": None}
                     await db.brands.insert_one(dict(b))
                 bid = b["id"]
             if r.get("category"):
-                c = await db.categories.find_one({"name": {"$regex": f"^{r['category']}$", "$options": "i"}, "deleted_at": None})
+                c = await db.categories.find_one({"name": {"$regex": f"^{re.escape(r['category'])}$", "$options": "i"}, "deleted_at": None})
                 if not c:
                     c = {"id": new_id(), "name": r["category"], "name_my": "", "slug": slugify(r["category"]).rsplit("-", 1)[0], "icon": "sparkles", "sort": 100, "created_at": now_iso(), "deleted_at": None}
                     await db.categories.insert_one(dict(c))
                 cid = c["id"]
             body = ProductIn(name=r["name"], brand_id=bid, category_id=cid, description=r.get("description", ""),
                              short_description=r.get("short_description", "")[:300], status="draft",
-                             variants=[VariantIn(name=r.get("plan") or "Standard", duration=r.get("duration", ""), price_mmk=price,
-                                                 stock_status=r.get("stock_status") if r.get("stock_status") in ("in_stock", "out_of_stock", "limited") else "in_stock")])
+                             variants=[VariantIn(name=x.get("plan") or "Standard", duration=x.get("duration", ""), price_mmk=x["_price"],
+                                                 stock_status=x.get("stock_status") if x.get("stock_status") in ("in_stock", "out_of_stock", "limited") else "in_stock") for x in rs])
             await create_product(body, user)
             created += 1
         except Exception as e:
-            errors.append({"row": i, "error": str(getattr(e, "detail", e))[:200]})
+            errors.append({"row": r["name"], "error": str(getattr(e, "detail", e))[:200]})
     await audit(actor_of(user), "product.import", "product", None, {"created": created, "errors": len(errors)})
     return {"created": created, "errors": errors[:50]}
 
@@ -547,8 +559,8 @@ async def dashboard(days: int = 30, user=Depends(require("dashboard"))):
     since = (now() - timedelta(days=max(1, min(days, 365)))).isoformat()
     c = db.orders.count_documents
     by = lambda ss: c({"status": {"$in": ss}, "created_at": {"$gte": since}})  # noqa
-    rev = await db.orders.aggregate([{"$match": {"status": "COMPLETED", "created_at": {"$gte": since}}},
-                                     {"$group": {"_id": {"$substr": ["$created_at", 0, 10]}, "t": {"$sum": "$total_mmk"}, "n": {"$sum": 1}}},
+    rev = await db.orders.aggregate([{"$match": {"status": "COMPLETED", "completed_at": {"$gte": since}}},
+                                     {"$group": {"_id": {"$substr": ["$completed_at", 0, 10]}, "t": {"$sum": "$total_mmk"}, "n": {"$sum": 1}}},
                                      {"$sort": {"_id": 1}}]).to_list(400)
     sups = await db.suppliers.find({"deleted_at": None}, {"_id": 0, "id": 1, "name": 1, "health": 1, "last_sync_at": 1, "last_error": 1, "active": 1}).to_list(50)
     return {
@@ -717,7 +729,7 @@ async def add_evidence(oid: str, reference: str = Form(""), file: Optional[Uploa
         raise HTTPException(400, "Provide a transaction reference or screenshot")
     await db.payment_evidence.insert_one(dict(ev))
     if o["status"] in {"AWAITING_PAYMENT", "PAYMENT_REJECTED"}:
-        await O.transition(o["id"], "PAYMENT_SUBMITTED", actor_of(user), "payment_evidence_submitted", ev["kind"])
+        await O.transition(o["id"], "PAYMENT_SUBMITTED", actor_of(user), "payment_evidence_submitted", ev["reference"] or ev["kind"])
     await tg_api.notify_owner("🔔 <b>Payment review needed</b> (added by staff)\n" + TB.order_summary(await get_order(o["id"]), True),
                               TB.admin_buttons(await get_order(o["id"])))
     ev.pop("_id", None)

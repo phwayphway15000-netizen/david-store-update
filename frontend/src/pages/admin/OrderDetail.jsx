@@ -59,7 +59,7 @@ export default function OrderDetail() {
   const review = ["PAYMENT_SUBMITTED", "PAYMENT_UNDER_REVIEW"].includes(s);
   const canDeliver = ["PAID_AWAITING_FULFILLMENT", "FULFILLMENT_IN_PROGRESS"].includes(s);
   const A = (label, to, cls, extra = {}) => o.allowed_transitions.includes(to) && (
-    <button key={to + label} className={cls || btnGhost} data-testid={`action-${to.toLowerCase()}`} onClick={() => setC({ to, title: `${label}?`, desc: `${o.ref}: ${statusLabel(s)} → ${statusLabel(to)}`, ok: label, ...extra })}>{label}</button>
+    <button key={to + label} className={cls || btnGhost} data-testid={extra.testid || `action-${to.toLowerCase()}`} onClick={() => setC({ to, title: `${label}?`, desc: `${o.ref}: ${statusLabel(s)} → ${statusLabel(to)}`, ok: label, ...extra })}>{label}</button>
   );
   return (
     <div className="space-y-6">
@@ -79,10 +79,10 @@ export default function OrderDetail() {
           <Card>
             <p className="font-semibold mb-3">Actions</p>
             <div className="flex flex-wrap gap-2" data-testid="order-actions">
-              {A("Customer confirmed", "AWAITING_PAYMENT", btnPrimary)}
+              {["CHECKOUT_STARTED", "AWAITING_CUSTOMER_CONFIRMATION"].includes(s) && A("Customer confirmed", "AWAITING_PAYMENT", btnPrimary)}
               {review && can("orders.approve") && A("Approve payment", "PAID_AWAITING_FULFILLMENT", btnPrimary, { desc: `Only approve after you have checked your ${o.payment_method?.name || "payment"} account and confirmed ${mmk(o.total_mmk)} actually arrived. Screenshots are evidence, not proof.` })}
               {review && can("orders.approve") && A("Reject payment", "PAYMENT_REJECTED", btnDanger, { needNote: true })}
-              {review && A("Request more evidence", "AWAITING_PAYMENT", btnGhost, { needNote: true })}
+              {review && A("Request more evidence", "AWAITING_PAYMENT", btnGhost, { needNote: true, testid: "action-request-evidence" })}
               {review && !can("orders.approve") && <p className="text-xs text-amber-700 flex items-center gap-1" data-testid="no-approve-permission"><ShieldAlert className="h-4 w-4" />You can't approve payments. Ask an owner/admin.</p>}
               {can("orders.deliver") && A("Mark delivery pending", "FULFILLMENT_IN_PROGRESS")}
               {can("orders.deliver") && A("Confirm manual delivery", "DELIVERED", btnGhost, { needNote: true, desc: "Use this when you handed the product over outside Telegram (e.g. Messenger)." })}

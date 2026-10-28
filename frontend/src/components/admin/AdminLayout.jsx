@@ -1,4 +1,4 @@
-import { NavLink, Navigate, Outlet, Link } from "react-router-dom";
+import { NavLink, Navigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { LayoutDashboard, Package, Tags, PlugZap, Inbox, Megaphone, Wallet, Users, Settings, ScrollText, LogOut, Menu, Store } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -13,8 +13,12 @@ const NAV = [
 export default function AdminLayout() {
   const { user, logout, can } = useAuth();
   const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
   if (user === null) return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">Loading…</div>;
   if (!user) return <Navigate to="/admin/login" replace />;
+  const seg = pathname.split("/")[2] || "";
+  const route = NAV.find((n) => n[0] === seg);
+  const allowed = !route || can(route[3]);
   const side = (
     <aside className="w-64 shrink-0 bg-[#0A1128] text-slate-300 flex flex-col h-full">
       <Link to="/admin" className="px-5 h-16 flex items-center gap-2 border-b border-white/10">
@@ -48,7 +52,7 @@ export default function AdminLayout() {
           <button onClick={() => setOpen(true)} data-testid="admin-mobile-menu" aria-label="Menu"><Menu className="h-5 w-5" /></button>
           <span className="ml-3 font-semibold text-sm">Store Operations</span>
         </div>
-        <main className="p-4 sm:p-8 max-w-[1400px]"><Outlet /></main>
+        <main className="p-4 sm:p-8 max-w-[1400px]">{allowed ? <Outlet /> : <p className="text-sm text-amber-700" data-testid="no-permission">You don't have permission to view this page.</p>}</main>
       </div>
     </div>
   );
