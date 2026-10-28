@@ -39,13 +39,16 @@ function Hero({ s, promo }) {
             <Link to="/support" data-testid="hero-support-btn" className="h-12 px-7 rounded-full border border-white/25 hover:bg-white/10 font-semibold inline-flex items-center gap-2 transition-colors"><Headphones className="h-4 w-4" />{t("contact_support")}</Link>
           </div>
         </div>
+        <div className="relative lg:hidden flex justify-center -mt-4 mb-2 order-first">
+          <img src="/logo-mark.png" alt="" className="w-32 hero-float drop-shadow-[0_0_30px_rgba(59,130,246,0.7)]" data-testid="hero-logo-mobile" />
+        </div>
         <div className="relative hidden lg:block">
           {img ? <img src={imgUrl(img)} alt="" className="rounded-3xl border border-white/10 shadow-2xl" />
-            : <div className="relative h-[360px]">
-              {[["ChatGPT", "top-0 left-6", "from-emerald-500 to-teal-600"], ["Canva", "top-24 right-0", "from-cyan-400 to-blue-600"], ["CapCut", "bottom-6 left-0", "from-slate-700 to-slate-900"], ["Notion", "bottom-0 right-16", "from-slate-200 to-white text-slate-900"]].map(([n, pos, g], i) => (
-                <div key={n} style={{ animationDelay: `${i * 120}ms` }} className={`fade-up absolute ${pos} w-52 rounded-2xl bg-gradient-to-br ${g} p-5 shadow-2xl border border-white/10`}>
-                  <p className="text-xs opacity-70">Plan · 1 Month</p><p className="font-display text-2xl font-bold mt-1">{n}</p><p className="mt-6 text-xs opacity-80">MMK · Human-verified</p>
-                </div>))}
+            : <div className="relative h-[420px] grid place-items-center" data-testid="hero-logo">
+              <div className="absolute h-80 w-80 rounded-full bg-blue-500/40 blur-[90px] animate-pulse" />
+              <div className="absolute h-[380px] w-[380px] rounded-full border border-blue-400/20" />
+              <div className="absolute h-[300px] w-[300px] rounded-full border border-blue-400/10" />
+              <img src="/logo-mark.png" alt="AI Tools By David" className="relative w-72 xl:w-80 fade-up hero-float drop-shadow-[0_0_45px_rgba(59,130,246,0.75)]" />
             </div>}
         </div>
       </div>

@@ -19,9 +19,9 @@ DEFAULT_SETTINGS = {
                  "telegram_channel": "https://t.me/aladdindigitalstorechannel", "address": "Myanmar"},
     "messenger_url": "https://www.facebook.com/share/1HyMbyD1ZX/",
     "hero": {"badge_en": "Myanmar's digital tools marketplace", "badge_my": "မြန်မာ့ Digital Tools စျေးကွက်",
-             "title_en": "Premium AI & creative tools, paid in Kyat.", "title_my": "Premium AI နှင့် Creative Tools များ — ကျပ်ငွေဖြင့်",
-             "subtitle_en": "Choose a plan, confirm on Telegram or Messenger, pay with KBZPay, WavePay or AYA Pay, and get human-verified delivery.",
-             "subtitle_my": "Plan ရွေးပါ၊ Telegram (သို့) Messenger မှ အတည်ပြုပါ၊ KBZPay / WavePay / AYA Pay ဖြင့် ငွေပေးချေပြီး လူကိုယ်တိုင် စစ်ဆေးပို့ဆောင်ပေးပါမည်။",
+        "title_en": "Build smarter with the right digital tools.", "title_my": "Build smarter with the right digital tools.",
+             "subtitle_en": "ပိုမိုစမတ်ကျတဲ့ ဒစ်ဂျစ်တယ်ဝန်ဆောင်မှုတွေကို ယုံကြည်စိတ်ချရတဲ့ စတိုးတစ်ခုတည်းမှာ ရယူလိုက်ပါ။",
+             "subtitle_my": "ပိုမိုစမတ်ကျတဲ့ ဒစ်ဂျစ်တယ်ဝန်ဆောင်မှုတွေကို ယုံကြည်စိတ်ချရတဲ့ စတိုးတစ်ခုတည်းမှာ ရယူလိုက်ပါ။",
              "image_url": ""},
     "faq": [
         {"q_en": "How do I place an order?", "q_my": "ဘယ်လို မှာယူရမလဲ?",

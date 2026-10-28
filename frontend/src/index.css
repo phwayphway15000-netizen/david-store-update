@@ -99,6 +99,12 @@
         background-size: 36px 36px;
     }
     .fade-up { animation: fadeUp .5s ease both; }
+    .hero-float { animation: fadeUp .6s ease both, heroFloat 6s ease-in-out .6s infinite; }
+}
+
+@keyframes heroFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
 }
 
 @keyframes fadeUp {
