@@ -23,7 +23,7 @@ export default function Suppliers() {
   };
   return (
     <div>
-      <PageHeader title="Supplier integrations" sub="Connect supplier REST APIs. Credentials are encrypted server-side and never sent to browsers.">
+      <PageHeader title="Custom suppliers" sub="Connect supplier REST APIs. Credentials are encrypted server-side and never sent to browsers.">
         <button className={btnPrimary} onClick={() => setOpen(true)} data-testid="new-supplier-btn"><Plus className="h-4 w-4" />Add supplier</button>
       </PageHeader>
       <div className="rounded-xl border bg-card overflow-x-auto">

@@ -22,10 +22,16 @@ REVIEW = {"BlackHatWorld": ("CONFIGURATION_ERROR", "SECURITY_REVIEW_REQUIRED: en
           "Samayra": ("NEEDS_REVIEW", "A previous sync returned HTTP 404 for the documented products route. Confirm the route with the supplier.")}
 
 
+FRIENDLY = {"AUTH_FAILED": "Invalid, expired or revoked API key", "NOT_FOUND": "Products endpoint not found on supplier", "RATE_LIMITED": "Supplier rate limit reached, try later",
+            "UNEXPECTED_REDIRECT": "Supplier redirected; not followed to protect the key", "TIMEOUT": "Supplier timed out", "TLS_ERROR": "TLS certificate problem",
+            "DNS_OR_CONNECT": "Supplier host unreachable", "MALFORMED_RESPONSE": "Unexpected response format", "CONFIGURATION_ERROR": "Connector configuration blocked"}
+
+
 class SupplierError(ValueError):
     def __init__(self, code, msg):
         super().__init__(f"{code}: {msg}")
         self.code = code
+        self.friendly = f"{FRIENDLY.get(code, code)} ({msg})"
 
 
 def preset_key(name):
@@ -290,12 +296,12 @@ async def run_test(s):
         status, items = await fetch_preset(s)
         sample = [normalize_preset(s, i) for i in items[:5] if isinstance(i, dict)]
         bad = [x for x in sample if x["needs_review"]]
-        res.update(ok=True, status_code=status, products_returned=len(items), auth="verified",
+        res.update(ok=True, status_code=status, products_returned=len(items), auth="request accepted by supplier",
                    mapping="validated" if sample and not bad else ("needs review" if sample else "no products returned"),
                    sample=[{k: x[k] for k in ("external_id", "name", "cost", "currency", "stock", "variants", "review_reasons")} for x in sample[:3]])
         new_status = "CONNECTED" if sample and not bad else "NEEDS_REVIEW" if bad else "CONNECTED"
     except SupplierError as e:
-        res.update(error_code=e.code, message=str(e))
+        res.update(error_code=e.code, message=e.friendly)
         new_status = status_for_error(str(e))
     await db.suppliers.update_one({"id": s["id"]}, {"$set": {"last_test": res, "connection_status": new_status, "health": "ok" if res["ok"] else "error"}})
     return {**res, "connection_status": new_status, "supplier": s["name"]}
@@ -397,6 +403,10 @@ def compute_price(cost, currency, rates, p: PricingIn):
     return int(math.ceil(mmk / p.rounding) * p.rounding) if p.rounding else int(round(mmk))
 
 
+async def preset_ids():
+    return [s["id"] async for s in db.suppliers.find({"preset_key": {"$ne": None}}, {"_id": 0, "id": 1})]
+
+
 @router.get("/catalogue")
 async def catalogue(q: str = "", supplier: str = "", category: str = "", brand: str = "", user=Depends(require("suppliers"))):
     import re
@@ -434,8 +444,11 @@ async def preview(body: ImportBody, user=Depends(require("suppliers"))):
     rates = await get_rates(user)
     out = []
     for it in body.items:
-        sp = await db.supplier_products.find_one({"id": it.supplier_product_id}, {"_id": 0, "raw": 0})
-        for v in (sp or {}).get("variants") or []:
+        sp = await db.supplier_products.find_one({"id": it.supplier_product_id, "supplier_id": {"$in": await preset_ids()}}, {"_id": 0, "raw": 0})
+        if not sp:
+            out.append({"supplier_product_id": it.supplier_product_id, "error": "not found"})
+            continue
+        for v in sp.get("variants") or []:
             try:
                 price = compute_price(v["cost"], sp.get("currency"), rates, body.pricing)
                 err = None
@@ -451,20 +464,26 @@ async def import_items(body: ImportBody, user=Depends(require("products"))):
     rates = await get_rates(user)
     created, errors = [], []
     for it in body.items:
-        sp = await db.supplier_products.find_one({"id": it.supplier_product_id}, {"_id": 0, "raw": 0})
-        if not sp or sp.get("linked_product_id"):
+        sp = await db.supplier_products.find_one_and_update(
+            {"id": it.supplier_product_id, "supplier_id": {"$in": await preset_ids()}, "linked_product_id": None},
+            {"$set": {"linked_product_id": "__claimed__"}}, projection={"_id": 0, "raw": 0})
+        if not sp:
             errors.append({"id": it.supplier_product_id, "error": "not found or already imported"})
             continue
+        release = {"$set": {"linked_product_id": None}}
+        out_of_stock = sp.get("stock_status") == "out_of_stock" or sp.get("stock") == 0
         try:
             variants = [{"id": new_id(), "name": v["name"], "duration": "", "price_mmk": int((it.manual_prices or {}).get(v["key"]) or compute_price(v["cost"], sp.get("currency"), rates, body.pricing)),
-                         "promo_price_mmk": None, "promo_start": None, "promo_end": None, "stock_status": "in_stock", "stock_qty": None,
+                         "promo_price_mmk": None, "promo_start": None, "promo_end": None, "stock_status": "out_of_stock" if out_of_stock else "in_stock", "stock_qty": None,
                          "stock_override": None, "supplier_id": sp["supplier_id"], "supplier_product_id": sp["external_id"], "supplier_variant_key": v["key"],
-                         "supplier_cost": v["cost"], "supplier_currency": sp.get("currency"), "supplier_stock": sp.get("stock") if sp.get("stock") is not None else 999,
+                         "supplier_cost": v["cost"], "supplier_currency": sp.get("currency"), "supplier_stock": sp.get("stock") if sp.get("stock") is not None else (0 if out_of_stock or sp.get("stock_status") == "unknown" else 999),
                          "last_synced_at": sp.get("last_synced_at"), "price_locked": True, "active": True} for v in sp.get("variants") or []]
         except ValueError as e:
+            await db.supplier_products.update_one({"id": sp["id"]}, release)
             errors.append({"id": it.supplier_product_id, "error": str(e)})
             continue
         if not variants:
+            await db.supplier_products.update_one({"id": sp["id"]}, release)
             errors.append({"id": it.supplier_product_id, "error": "no variants"})
             continue
         name = it.name or sp["name"]

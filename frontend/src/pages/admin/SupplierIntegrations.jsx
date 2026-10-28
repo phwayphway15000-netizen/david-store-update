@@ -35,7 +35,7 @@ function ConnectDialog({ s, onClose, onDone }) {
         {res && (
           <div data-testid="connect-result" className={`rounded-lg border p-3 text-sm ${res.ok ? "border-emerald-300 bg-emerald-50/60" : "border-rose-300 bg-rose-50/60"}`}>
             <p className="font-bold">{res.connection_status}</p>
-            {res.ok ? <><p>API authentication: Verified</p><p>Products returned: <b>{res.products_returned}</b></p><p>Product mapping: {res.mapping}</p></> : <p>{res.message}</p>}
+            {res.ok ? <><p>Supplier request: accepted (HTTP {res.status_code})</p><p>Products returned: <b>{res.products_returned}</b></p><p>Product mapping: {res.mapping}</p></> : <p>{res.message}</p>}
             <p className="text-xs text-muted-foreground">Last checked: {fmtDate(res.at)}</p>
           </div>
         )}

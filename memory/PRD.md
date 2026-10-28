@@ -26,6 +26,14 @@ Owner (David), Admin, Product Manager, Customer Service staff; Myanmar customers
 - Security: bcrypt, httpOnly JWT cookies + refresh, brute-force lockout, RBAC server-side, origin check (CSRF), rate limits, SSRF guard, Fernet encryption, webhook secret header, token never logged.
 - Testing: iteration_1 — 32/36 backend + UI flows pass; all reported findings fixed afterwards (XFF, host URL, reject reason required, CSV grouping/regex escape, lockout reset, refresh active check, revenue by completed_at, order actions button, catalog filter race, route permission guard, placeholder text).
 
+## Supplier Integrations (2026-10-28)
+- 18 built-in presets from user JSON (secrets stripped) in backend/supplier_presets.json; installed into supplier_definitions + suppliers (preset_key) on startup.
+- connectors.py: one-key connect (header/bearer/query auth per preset), Connect & Test with sanitized error codes, host allowlist, HTTPS-only, no redirects, offset pagination, rate-limit delay, nested/fixed/root/pricing-tier mappings -> multi-variant supplier products, needs_review flags.
+- Per-supplier sync lock, scheduler (interval per preset), sync-all, revoke/replace key, settings (interval/disable).
+- Supplier Catalogue: filters, exchange rates -> MMK, pricing strategies + preview, bulk import as DRAFT (atomic claim), reset-to-supplier field action. Field ownership: sync only touches supplier cost/stock/sync time.
+- Status: BlackHatWorld CONFIGURATION_ERROR (HTTP), Prmast/Samayra NEEDS_REVIEW; others CONFIGURATION READY (no live keys supplied).
+- Tests: backend/tests/test_connectors.py (mocked) 7/7; iteration_3 60/61 then fixes applied.
+
 ## Backlog
 - P1: Official Meta Messenger Platform connector (needs Page token + App Review); Turnstile on suspicious checkout; DNS-pinning for supplier requests; Burmese status labels on Track page.
 - P2: Per-order customer notifications for Messenger orders; reports export; multi-admin Telegram operators.

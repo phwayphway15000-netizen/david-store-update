@@ -162,6 +162,8 @@ async def fetch_with_retry(s, run):
             return items, None
         except Exception as e:
             err = str(e)
+            if getattr(e, "code", None) in ("AUTH_FAILED", "CONFIGURATION_ERROR", "NOT_CONNECTED", "UNEXPECTED_REDIRECT", "NOT_FOUND"):
+                break
             if attempt < 2:
                 await asyncio.sleep(2 ** attempt)
     return None, err

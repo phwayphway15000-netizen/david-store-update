@@ -1,0 +1,48 @@
+{
+  "summary": "Tested the 18 supplier presets end to end. Backend: test_connectors.py (mocked) plus test_store_regression.py gave 43/43 PASS. The new test_supplier_integrations.py gave 17/18 PASS. Checked: exactly 18 presets; BlackHatWorld is CONFIGURATION_ERROR with a SECURITY_REVIEW note; Prmast and Samayra are NEEDS_REVIEW; the other 15 are NOT_CONNECTED; no credential_enc and no plain key in responses (only key_masked). Connecting with a fake key against real hosts: AIVaultHub, Canboso and StoreGPTPlus returned AUTH_FAILED (HTTP 401) without echoing the key. Acczone returned ok:true CONNECTED with 5 real products, because its endpoint does not check the key. BlackHatWorld gave CONFIGURATION_ERROR and no request was sent. Revoke puts each supplier back to its original status. Sync without a key gives 400, a forced lock gives 409, an unknown id gives 404, a short key gives 422. Exchange rates sanitize bad and negative values. Preview with fixed_markup 3000 and rounding 100 gives 16000 and 35500; percent 10 with rounding 500 gives 14500 and 36000. Import creates a draft SUPPLIER_API product with 2 price_locked variants. A second import gives 'already imported'. After publishing, the public list and detail pages contain no supplier_cost or supplier_currency. A customer_service user gets 403 and an anonymous user gets 401. Manual product create still works. /admin/suppliers excludes presets. Frontend (1920 desktop): the integrations page shows 8 metrics and 18 cards with correct badges; the Connect dialog has a single API key field; Connect & Test shows an AUTH_FAILED result panel; the card shows the masked key; Revoke resets the card. The catalogue page works: rates card save, search with empty state, supplier filter with 19 options, row selection, pricing bar, preview (16,000 Ks and 35,500 Ks), Import as draft (toast 'Imported 1 as DRAFT'), row disabled with an 'Imported → edit' link to the product editor. The custom suppliers page loads. No page errors. One real data-integrity bug found (below).",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "PUT /api/admin/products/{pid} (routes_admin.VariantIn / build_product)", "issue": "Saving an imported preset product in the Products editor (the documented way to publish) removes supplier_variant_key and supplier_currency from every variant. VariantIn does not declare these fields, and SUPPLIER_OWNED only keeps supplier_cost, supplier_stock and last_synced_at. Reproduced: after the PUT, variants have supplier_variant_key None and None (should be '0' and '1'). Effect: on the next sync, suppliers.apply_to_variant falls back to n['cost'] (the first tier cost) for every variant, so the 3-month plan gets the 1-month cost. Fix: add 'supplier_variant_key' and 'supplier_currency' to SUPPLIER_OWNED (copy them from prev) or add them to VariantIn.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/admin/supplier-integrations/{sid}/connect (Acczone)", "issue": "Acczone /getServices answers 200 with any key, so a fake key gives ok:true, auth:'verified' and status CONNECTED. The 'API authentication: Verified' text in the UI is misleading for presets whose endpoint is public. Consider wording such as 'request succeeded (supplier does not validate the key on this endpoint)', or a per-preset flag."},
+      {"endpoint": "POST /catalogue/import", "issue": "The check-then-update on linked_product_id is not atomic. Two concurrent imports of the same item can create duplicate products. Use find_one_and_update with {linked_product_id: null} as a claim before inserting."},
+      {"endpoint": "POST /catalogue/import", "issue": "The variant stock_status is always 'in_stock' even when the supplier product has stock_status out_of_stock or stock 0. supplier_stock falls back to 999 when stock is None, so items with 'unknown' stock show as available."},
+      {"endpoint": "POST /catalogue/preview", "issue": "Does not restrict supplier_product_id to preset suppliers (catalogue GET does). It also silently skips unknown ids instead of reporting an error."},
+      {"endpoint": "locked_sync -> suppliers.run_sync", "issue": "AUTH_FAILED and CONFIGURATION_ERROR are retried 3 times with backoff sleeps. Non-transient errors should not be retried, because a bad key makes the user wait several seconds."},
+      {"endpoint": "GET /api/admin/supplier-integrations metrics.imported_products", "issue": "This counts supplier_products (catalogue items), not imported local products. The label 'Imported products' is misleading; call it 'Catalogue items'."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin/supplier-integrations connect result", "issues": ["The error panel shows the code twice ('AUTH_FAILED' then 'AUTH_FAILED: HTTP 401'). Show a friendly message instead, e.g. 'Invalid API key (HTTP 401)'."]},
+      {"screen": "/admin/suppliers", "issues": ["The page title is 'Supplier integrations', the same as the preset page. Rename it to 'Custom suppliers' to match the sidebar."]},
+      {"screen": "Admin pages at 1920px", "issues": ["Content is capped at about 1330px and left-aligned, which leaves a large empty area on the right. This is optional."]},
+      {"screen": "SupplierCatalogue", "issues": ["The rounding, local category and brand filter selects, and the Add currency button, have no data-testid."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_supplier_integrations.py", "/app/backend/tests/test_connectors.py", "/app/backend/tests/test_store_regression.py", "/app/test_reports/pytest/pytest_iter3_integrations.xml", "/app/test_reports/pytest/pytest_iter3_existing.xml"],
+  "action_items": [
+    "HIGH: keep supplier_variant_key and supplier_currency when a product is saved via PUT /admin/products/{pid} (add them to SUPPLIER_OWNED in routes_admin.build_product). Then re-run test_supplier_integrations.py::TestCatalogue::test_edit_imported_product_keeps_variant_key.",
+    "Make the catalogue import claim atomic (find_one_and_update with linked_product_id: null)",
+    "Map the supplier stock_status/stock into the imported variant instead of a hard-coded in_stock / 999",
+    "Do not retry AUTH_FAILED or CONFIGURATION_ERROR in sync",
+    "Clarify the 'Verified' wording for presets that do not validate keys (Acczone)",
+    "Rename the 'Imported products' metric and the /admin/suppliers page title"
+  ],
+  "critical_code_review_comments": [
+    "routes_admin.py is 792 lines (>700); split products, users and orders into modules",
+    "connectors.scheduler_loop imports datetime inside the loop; move it to the top-level import",
+    "connect saves the key before the DISABLED check in run_test, so a disabled integration still stores a new key and then returns 400"
+  ],
+  "updated_files": ["/app/backend/tests/test_supplier_integrations.py"],
+  "success_rate": {"backend": "98% (60/61 tests; 1 real bug)", "frontend": "100% of requested flows"},
+  "test_credentials": "Owner from /app/memory/test_credentials.md works. A customer_service user was created on the fly (test_cs_integrations@example.com) and deleted afterwards.",
+  "seed_data_creation": "None left behind. TEST_sp1 supplier_product and its imported products were deleted. TEST_ products were hard-deleted, including soft-deleted leftovers from the regression suite. exchange_rates was unset (it was absent before). All preset keys were revoked: 15 NOT_CONNECTED, 1 CONFIGURATION_ERROR, 2 NEEDS_REVIEW, 0 keys stored.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && pytest tests/test_supplier_integrations.py -n 0 -v. It inserts TEST_sp1 for the AIVaultHub preset and cleans up through fixtures. Fake-key connects hit real supplier hosts: AIVaultHub, Canboso and StoreGPTPlus return 401; Acczone returns 200 with any key. No real supplier keys exist, so no live sync with real products was verified. The browser_automation script needs 'import asyncio' if you use dialog handlers.",
+  "rca of the issue": "Variant key loss: routes_admin.build_product rebuilds variants from VariantIn.model_dump(), and only the fields in SUPPLIER_OWNED are copied from the existing variant. supplier_variant_key and supplier_currency, which connectors.import_items writes, are not in VariantIn or SUPPLIER_OWNED, so any editor save drops them. suppliers.apply_to_variant then sees supplier_variant_key None and uses the first-tier cost for every variant. Repro: import TEST_sp1, then PUT the product with status published, then read the variants from Mongo."
+}

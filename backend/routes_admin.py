@@ -230,7 +230,7 @@ class ProductIn(BaseModel):
     variants: List[VariantIn] = Field(min_length=1)
 
 
-SUPPLIER_OWNED = ("supplier_cost", "supplier_stock", "last_synced_at")
+SUPPLIER_OWNED = ("supplier_cost", "supplier_stock", "last_synced_at", "supplier_variant_key", "supplier_currency")
 
 
 async def build_product(body: ProductIn, existing=None, actor=None):
