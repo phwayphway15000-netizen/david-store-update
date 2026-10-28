@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 222 47% 11%;
+        --card: 0 0% 100%;
+        --card-foreground: 222 47% 11%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222 47% 11%;
+        --primary: 221 83% 53%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 210 40% 96%;
+        --secondary-foreground: 226 60% 10%;
+        --muted: 210 40% 96%;
+        --muted-foreground: 215 16% 47%;
+        --accent: 214 100% 97%;
+        --accent-foreground: 221 83% 45%;
+        --destructive: 0 72% 51%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 214 32% 91%;
+        --input: 214 32% 91%;
+        --ring: 221 83% 53%;
+        --radius: 0.75rem;
+        --navy: 226 60% 10%;
+        --shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+        --shadow-hover: 0 20px 30px -10px rgba(37, 99, 235, 0.14), 0 10px 15px -3px rgba(15, 23, 42, 0.08);
+    }
+    .dark {
+        --background: 222 55% 6%;
+        --foreground: 210 40% 98%;
+        --card: 222 47% 11%;
+        --card-foreground: 210 40% 98%;
+        --popover: 222 47% 11%;
+        --popover-foreground: 210 40% 98%;
+        --primary: 217 91% 60%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 217 33% 17%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 217 33% 17%;
+        --muted-foreground: 215 20% 65%;
+        --accent: 217 50% 18%;
+        --accent-foreground: 213 94% 78%;
+        --destructive: 0 63% 45%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 217 33% 20%;
+        --input: 217 33% 20%;
+        --ring: 217 91% 60%;
+        --navy: 210 40% 98%;
+    }
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+        font-family: "Plus Jakarta Sans", "Noto Sans Myanmar", "Padauk", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+    }
+    html[lang="my"] body {
+        line-height: 1.75;
+    }
+    h1, h2, h3, .font-display {
+        font-family: "Outfit", "Noto Sans Myanmar", sans-serif;
+    }
+    ::selection {
+        background: #2563eb;
+        color: #fff;
+    }
+}
+
+@layer components {
+    .container-x { @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8; }
+    .card-elev { box-shadow: var(--shadow-card); transition: box-shadow .25s ease, transform .25s ease; }
+    .card-elev:hover { box-shadow: var(--shadow-hover); transform: translateY(-3px); }
+    .eyebrow { @apply text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400; }
+    .grid-bg {
+        background-image: linear-gradient(rgba(37, 99, 235, .07) 1px, transparent 1px), linear-gradient(90deg, rgba(37, 99, 235, .07) 1px, transparent 1px);
+        background-size: 36px 36px;
+    }
+    .fade-up { animation: fadeUp .5s ease both; }
+}
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+}

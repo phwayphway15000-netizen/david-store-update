@@ -1,0 +1,170 @@
+{
+  "project_name": "AI Tools By David Digital Store",
+  "archetype": "THE PERFORMANCE PRO & SWISS PREMIUM SAAS",
+  "context_type": "hybrid_fullstack",
+  "default_language": "my (Burmese)",
+  "supported_languages": ["my", "en"],
+  "currency": "MMK",
+  "theme": {
+    "default": "light",
+    "optional_dark_mode": true,
+    "style": "Premium SaaS / Digital Marketplace",
+    "background_mode": "Clean white and slate ice with navy blue depth & electric blue accents"
+  },
+  "typography": {
+    "latin_display": "Plus Jakarta Sans, sans-serif",
+    "latin_heading": "Outfit, sans-serif",
+    "latin_body": "Inter, sans-serif",
+    "burmese_font_family": "'Padauk', 'Noto Sans Myanmar', 'Pyidaungsu', sans-serif",
+    "font_family_stack": "'Plus Jakarta Sans', 'Padauk', 'Noto Sans Myanmar', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    "google_fonts_embed_url": "https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Padauk:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
+    "scale": {
+      "h1": "text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-semibold tracking-tight",
+      "h4": "text-lg sm:text-xl font-semibold",
+      "body_lg": "text-base sm:text-lg leading-relaxed",
+      "body_base": "text-sm sm:text-base leading-normal",
+      "body_sm": "text-xs sm:text-sm text-slate-500 dark:text-slate-400",
+      "overline": "text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400"
+    }
+  },
+  "colors": {
+    "light": {
+      "background": "#FFFFFF",
+      "surface": "#F8FAFC",
+      "surface_elevated": "#FFFFFF",
+      "surface_border": "#E2E8F0",
+      "navy_primary": "#0A1128",
+      "navy_secondary": "#1E293B",
+      "electric_blue": "#2563EB",
+      "electric_blue_hover": "#1D4ED8",
+      "electric_blue_subtle": "#EFF6FF",
+      "cyan_accent": "#06B6D4",
+      "foreground": "#0F172A",
+      "muted": "#64748B",
+      "border": "#E2E8F0",
+      "input_bg": "#F8FAFC"
+    },
+    "dark": {
+      "background": "#070C18",
+      "surface": "#0F172A",
+      "surface_elevated": "#1E293B",
+      "surface_border": "#334155",
+      "navy_primary": "#F8FAFC",
+      "navy_secondary": "#E2E8F0",
+      "electric_blue": "#3B82F6",
+      "electric_blue_hover": "#60A5FA",
+      "electric_blue_subtle": "rgba(59, 130, 246, 0.12)",
+      "cyan_accent": "#22D3EE",
+      "foreground": "#F8FAFC",
+      "muted": "#94A3B8",
+      "border": "#334155",
+      "input_bg": "#0F172A"
+    },
+    "forbidden_colors": ["#7351B7", "#1B93A4"]
+  },
+  "spacing_and_radius": {
+    "radius_lg": "0.75rem",
+    "radius_md": "0.5rem",
+    "radius_sm": "0.375rem",
+    "radius_pill": "9999px",
+    "container_padding": "px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto",
+    "card_padding": "p-5 sm:p-6"
+  },
+  "elevations_and_borders": {
+    "card_shadow": "0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03)",
+    "card_shadow_hover": "0 20px 30px -10px rgba(37, 99, 235, 0.12), 0 10px 15px -3px rgba(15, 23, 42, 0.08)",
+    "glass_nav": "backdrop-blur-md bg-white/85 dark:bg-slate-900/85 border-b border-slate-200/80 dark:border-slate-800/80",
+    "badge_shadow": "0 2px 4px rgba(0,0,0,0.04)"
+  },
+  "order_status_badges": {
+    "Draft": "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300",
+    "Pending Payment": "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border-amber-300",
+    "Payment Verification": "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-300 animate-pulse",
+    "Payment Confirmed": "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-300",
+    "Payment Failed": "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border-rose-300",
+    "Processing": "bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 border-sky-300",
+    "Account Provisioning": "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border-indigo-300",
+    "Delivery Pending": "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 border-violet-300",
+    "Completed": "bg-teal-50 text-teal-800 dark:bg-teal-950/50 dark:text-teal-300 border-teal-300 font-semibold",
+    "Refunded": "bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 border-purple-300",
+    "Cancelled": "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border-slate-200",
+    "On Hold": "bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 border-orange-300",
+    "Expired": "bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400 border-stone-300"
+  },
+  "key_components_and_layouts": {
+    "navbar": {
+      "type": "Sticky Glassmorphism Nav",
+      "elements": [
+        "Brand Logo ('AI Tools By David')",
+        "Primary Links: Home, All Products, AI Tools, Creative Tools, Office & Productivity, Education, Developer Tools, Digital Services, Promotions, Support",
+        "Search bar modal/input",
+        "EN/MM Language Switcher (Myanmar flag/label toggle)",
+        "Dark Mode Toggle",
+        "Telegram Quick Contact button"
+      ]
+    },
+    "hero_banner": {
+      "type": "Admin Managed Promotional Hero Banner",
+      "style": "Gradient border, subtle grid pattern overlay, electric blue glowing callouts",
+      "ctas": ["Explore Products (Scroll/Link)", "Contact Support (Telegram/Messenger)"]
+    },
+    "brand_strip": {
+      "brands": ["ChatGPT", "Gemini", "Canva", "CapCut", "ElevenLabs", "Descript", "Synthesia", "Coursera", "Udemy", "Notion"],
+      "style": "Interactive pill filter / icon ribbon with official brand colors"
+    },
+    "digital_services": {
+      "items": ["Website Development", "Custom Mobile App", "Telegram Bot Setup", "Custom AI Agent", "API Integrations"],
+      "style": "Feature cards with modern icons, specs, starting MMK price, order modal button"
+    },
+    "product_card": {
+      "elements": ["Brand Logo/Badge", "Product Image", "Name", "Category tag", "Plan Duration (1 Month, 1 Year, Lifetime, Shared, Private)", "MMK Price with strike-through original", "Stock Status Badge (In Stock / Instant Delivery / Pre-order)", "Buy Now button"]
+    },
+    "product_detail_dialog": {
+      "features": [
+        "Plan Variant Selector (Duration / Shared vs Private / Warranty)",
+        "Instant MMK Price calculation",
+        "Burmese instructions & warranty terms",
+        "Buy via Telegram Button (opens pre-filled Telegram deep link / popup)",
+        "Order via Messenger Button (opens pre-filled Messenger message / popup)",
+        "Contact Support Button"
+      ]
+    },
+    "admin_dashboard": {
+      "route": "/admin",
+      "layout": "Sidebar + Header + Density Grid",
+      "sections": [
+        "KPI Cards: Total Sales (MMK), Pending Orders, Active Subscriptions, Supplier Balance",
+        "Products Manager: CRUD, variants, prices, stock, supplier mapping",
+        "Suppliers Integration Manager: API key setup, auto-fulfillment sync status",
+        "Orders Inbox: Search, filter by 13 status badges, batch actions",
+        "Order Detail Drawer/Modal: Customer Telegram/Messenger details, payment review, payment screenshot view, status update, account key delivery"
+      ]
+    }
+  },
+  "image_urls": {
+    "chatgpt_hero": "https://images.unsplash.com/photo-1761223976721-8fb221946658?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwzfHxkaWdpdGFsJTIwc29mdHdhcmUlMjBhaSUyMHN1YnNjcmlwdGlvbiUyMFNhYVMlMjBiYW5uZXIlMjBwcmVzZW50YXRpb258ZW58MHx8fHwxNzkzMjE3NjI3fDA&ixlib=rb-4.1.0&q=85",
+    "ai_tablet_showcase": "https://images.unsplash.com/photo-1758626052247-79003b45f802?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwyfHxkaWdpdGFsJTIwc29mdHdhcmUlMjBhaSUyMHN1YnNjcmlwdGlvbiUyMFNhYVMlMjBiYW5uZXIlMjBwcmVzZW50YXRpb258ZW58MHx8fHwxNzkzMjE3NjI3fDA&ixlib=rb-4.1.0&q=85",
+    "postman_banner": "https://images.unsplash.com/photo-1777785113215-ed916eb90a91?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHw0fHxkaWdpdGFsJTIwc29mdHdhcmUlMjBhaSUyMHN1YnNjcmlwdGlvbiUyMFNhYVMlMjBiYW5uZXIlMjBwcmVzZW50YXRpb258ZW58MHx8fHwxNzkzMjE3NjI3fDA&ixlib=rb-4.1.0&q=85"
+  },
+  "instructions_to_main_agent": [
+    "Ensure default language is Burmese (my) with instant toggle to English (en). Provide full bilingual translations for all UI text, product titles, badges, and Burmese payment/support instructions.",
+    "Display all product prices clearly formatted in MMK (e.g., 25,000 MMK or 25,000 Ks).",
+    "Incorporate the sticky header with full navigation items, brand logo, search modal, EN/MM language switcher, and dark mode toggle.",
+    "Storefront structure should match the layout/IA inspired by microwavecreation.com: Sticky top bar, high impact hero promo banner, category navigation ribbon, featured products grid, digital services showcase, why choose us trust metrics, clear FAQ, and detailed footer.",
+    "Order creation must support direct seamless flow to Telegram and Messenger with pre-populated order summaries (Product, Plan, Price in MMK, Customer ID).",
+    "Admin dashboard at /admin must include statistics overview, product management table, order inbox supporting all 13 status badges, supplier integration manager, and order detail drawer with payment verification and delivery account details.",
+    "Add data-testid attributes to all interactive elements, buttons, inputs, tabs, status badges, and modals."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You tend to converge toward generic outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition (e.g., transition: all). Add transitions for specific properties like hover:bg-blue-700.",
+    "You MUST NOT center align the app container (no .App { text-align: center; }).",
+    "NEVER use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 for icons. Use lucide-react or @phosphor-icons/react icons.",
+    "All interactive elements MUST include a data-testid attribute in kebab-case."
+  ]
+}
