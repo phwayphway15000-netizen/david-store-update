@@ -22,7 +22,7 @@ export default function AdminLayout() {
   const side = (
     <aside className="w-64 shrink-0 bg-[#0A1128] text-slate-300 flex flex-col h-full">
       <Link to="/admin" className="px-5 h-16 flex items-center gap-2 border-b border-white/10">
-        <span className="h-8 w-8 rounded-lg bg-blue-600 grid place-items-center text-white font-bold">D</span>
+        <img src="/logo-mark.png" alt="logo" className="h-8 w-8 rounded-lg object-cover" />
         <span className="text-white font-semibold text-sm">Store Operations</span>
       </Link>
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">

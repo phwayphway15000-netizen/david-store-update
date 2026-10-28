@@ -209,7 +209,7 @@ async def og_product(slug: str):
     e = H.escape
     title = f"{pp['name']} – {s.get('brand_name', '')}"
     desc = pp.get("short_description") or (pp.get("description") or "")[:180]
-    img = _abs(pp["images"][0]) if pp.get("images") else _abs(s.get("og_image") or "")
+    img = _abs(pp["images"][0]) if pp.get("images") else (_abs(s.get("og_image")) or f"{base_url()}/logo-og.jpg")
     store_url = f"{base_url()}/products/{slug}"
     rows = "".join(f"<li>{e(v['name'])} {e(v.get('duration') or '')} — {v['effective_price_mmk']:,} MMK"
                    f"{' (was ' + format(v['price_mmk'], ',') + ' MMK)' if v['promo_active'] else ''} — "

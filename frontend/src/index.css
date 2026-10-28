@@ -59,7 +59,26 @@
         -webkit-font-smoothing: antialiased;
     }
     html[lang="my"] body {
-        line-height: 1.75;
+        line-height: 2;
+        word-spacing: 0.15em;
+    }
+    html[lang="my"] p,
+    html[lang="my"] li {
+        line-height: 2.1;
+    }
+    html[lang="my"] p + p {
+        margin-top: 0.9em;
+    }
+    html[lang="my"] h1,
+    html[lang="my"] h2,
+    html[lang="my"] h3 {
+        line-height: 1.6 !important;
+    }
+    html[lang="my"] .whitespace-pre-line {
+        line-height: 2.2;
+    }
+    html[lang="my"] :is(main, footer) :is(.text-xs, .text-sm, .text-base, .text-lg, [data-state] > div) {
+        line-height: 2.05;
     }
     h1, h2, h3, .font-display {
         font-family: "Outfit", "Noto Sans Myanmar", sans-serif;

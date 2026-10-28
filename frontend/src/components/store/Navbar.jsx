@@ -11,7 +11,7 @@ export const Logo = ({ settings }) => (
     {settings?.logo_url ? (
       <img src={imgUrl(settings.logo_url)} alt={settings.brand_name} className="h-9 w-auto" />
     ) : (
-      <span className="h-9 w-9 rounded-xl bg-[#0A1128] dark:bg-blue-600 grid place-items-center text-white font-display font-extrabold">D</span>
+      <img src="/logo-mark.png" alt="AI Tools By David Digital Store logo" data-testid="nav-logo-img" className="h-10 w-10 rounded-xl object-cover shadow-sm" />
     )}
     <span className="leading-tight">
       <span className="block font-display font-bold text-[15px] text-[#0A1128] dark:text-white">AI Tools By David</span>
