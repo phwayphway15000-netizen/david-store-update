@@ -25,7 +25,7 @@ export default function Login() {
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex bg-[#0A1128] text-white p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute inset-0 grid-bg opacity-30" />
-        <p className="relative font-display font-bold text-lg flex items-center gap-3"><img src="/logo-mark.png" alt="logo" className="h-10 w-10 rounded-xl" />AI Tools By David · Operations</p>
+        <p className="relative font-display font-bold text-lg flex items-center gap-3"><img src="/logo-mark.png" alt="logo" className="h-12 w-12 object-contain" />AI Tools By David · Operations</p>
         <p className="relative text-4xl font-extrabold leading-tight max-w-md">Every order verified by a human. Every action on the record.</p>
         <p className="relative text-sm text-slate-400">Authorized staff only. Activity is audit-logged.</p>
       </div>

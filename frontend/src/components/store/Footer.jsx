@@ -13,7 +13,7 @@ export default function Footer() {
     <footer className="bg-[#0A1128] text-slate-300 mt-24" data-testid="site-footer">
       <div className="container-x py-14 grid gap-10 md:grid-cols-4">
         <div className="md:col-span-2 max-w-sm">
-          <p className="font-display text-white text-xl font-bold flex items-center gap-3"><img src="/logo-mark.png" alt="logo" className="h-11 w-11 rounded-xl" data-testid="footer-logo" />{s?.brand_name}</p>
+          <p className="font-display text-white text-xl font-bold flex items-center gap-3"><img src="/logo-mark.png" alt="logo" className="h-14 w-14 object-contain" data-testid="footer-logo" />{s?.brand_name}</p>
           <p className="mt-3 text-sm text-slate-400">{pick(s?.tagline_en, s?.tagline_my)}</p>
           <p className="mt-6 text-xs text-slate-500">{t("disclaimer")}</p>
         </div>
