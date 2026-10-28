@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Headphones, Globe, Smartphone, Send, Bot, Plug, ShieldCheck, Eye, MessagesSquare, Truck, Sparkles } from "lucide-react";
@@ -18,6 +19,26 @@ const Section = ({ eyebrow, title, action, children, id }) => (
     {children}
   </section>
 );
+
+function HeroLogo() {
+  const [t, setT] = useState(null);
+  const move = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setT({ x: (e.clientX - r.left) / r.width - 0.5, y: (e.clientY - r.top) / r.height - 0.5 });
+  };
+  const style = t ? { transform: `perspective(900px) rotateY(${t.x * 18}deg) rotateX(${-t.y * 18}deg) scale(1.06)`, filter: "drop-shadow(0 0 70px rgba(96,165,250,0.95)) brightness(1.12)" } : {};
+  return (
+    <div className="relative h-[420px] grid place-items-center" data-testid="hero-logo" onMouseMove={move} onMouseLeave={() => setT(null)}>
+      <div className={`absolute rounded-full blur-[90px] transition-all duration-500 ${t ? "h-96 w-96 bg-blue-400/60" : "h-80 w-80 bg-blue-500/40 animate-pulse"}`} />
+      <div className={`absolute h-[380px] w-[380px] rounded-full border transition-colors duration-500 ${t ? "border-blue-300/50" : "border-blue-400/20"}`} />
+      <div className="absolute h-[300px] w-[300px] rounded-full border border-blue-400/10" />
+      <div className={t ? "" : "hero-float"}>
+        <img src="/logo-mark.png" alt="AI Tools By David" data-testid="hero-logo-img" style={style}
+          className="relative w-72 xl:w-80 transition-[transform,filter] duration-200 ease-out drop-shadow-[0_0_45px_rgba(59,130,246,0.75)]" />
+      </div>
+    </div>
+  );
+}
 
 function Hero({ s, promo }) {
   const { pick, t } = useI18n();
@@ -44,12 +65,7 @@ function Hero({ s, promo }) {
         </div>
         <div className="relative hidden lg:block">
           {img ? <img src={imgUrl(img)} alt="" className="rounded-3xl border border-white/10 shadow-2xl" />
-            : <div className="relative h-[420px] grid place-items-center" data-testid="hero-logo">
-              <div className="absolute h-80 w-80 rounded-full bg-blue-500/40 blur-[90px] animate-pulse" />
-              <div className="absolute h-[380px] w-[380px] rounded-full border border-blue-400/20" />
-              <div className="absolute h-[300px] w-[300px] rounded-full border border-blue-400/10" />
-              <img src="/logo-mark.png" alt="AI Tools By David" className="relative w-72 xl:w-80 fade-up hero-float drop-shadow-[0_0_45px_rgba(59,130,246,0.75)]" />
-            </div>}
+            : <HeroLogo />}
         </div>
       </div>
     </section>
