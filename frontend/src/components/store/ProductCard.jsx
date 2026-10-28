@@ -27,8 +27,8 @@ export default function ProductCard({ p, i = 0 }) {
   return (
     <Link to={`/products/${p.slug}`} data-testid={`product-card-${p.slug}`} style={{ animationDelay: `${i * 50}ms` }}
       className="fade-up group bg-card rounded-2xl border card-elev overflow-hidden flex flex-col">
-      <div className="relative aspect-[4/3] overflow-hidden">
-        {p.images?.[0] ? <img src={imgUrl(p.images[0])} alt={p.name} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
+      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+        {p.images?.[0] ? <img src={imgUrl(p.images[0])} alt={p.name} data-testid="product-card-image" className="h-full w-full object-contain group-hover:scale-105 transition-transform duration-500" />
           : <BrandMark name={p.brand?.name || p.name} className="h-full w-full group-hover:scale-105 transition-transform duration-500" />}
         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
           {p.max_discount > 0 && <span className="text-[11px] font-bold bg-rose-600 text-white px-2 py-0.5 rounded-full">-{p.max_discount}%</span>}

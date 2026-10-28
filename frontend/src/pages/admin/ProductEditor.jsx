@@ -114,8 +114,8 @@ export default function ProductEditor() {
             <p className="font-semibold mb-3">Images</p>
             <div className="grid grid-cols-3 gap-2">
               {f.images.map((src, i) => (
-                <div key={src} className="relative group aspect-square rounded-lg overflow-hidden border">
-                  <img src={imgUrl(src)} alt="" className="h-full w-full object-cover" />
+                <div key={src} className="relative group aspect-square rounded-lg overflow-hidden border bg-slate-100">
+                  <img src={imgUrl(src)} alt="" className="h-full w-full object-contain" />
                   <button onClick={() => u("images", f.images.filter((_, j) => j !== i))} className="absolute top-1 right-1 bg-white/90 rounded p-1 opacity-0 group-hover:opacity-100" aria-label="Remove image"><Trash2 className="h-3 w-3 text-rose-600" /></button>
                 </div>
               ))}

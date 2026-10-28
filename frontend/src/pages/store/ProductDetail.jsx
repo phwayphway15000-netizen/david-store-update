@@ -28,8 +28,8 @@ export default function ProductDetail() {
       </nav>
       <div className="grid lg:grid-cols-[1.3fr_1fr] gap-10">
         <div>
-          <div className="rounded-3xl overflow-hidden border aspect-[16/10]">
-            {p.images?.length ? <img src={imgUrl(p.images[img])} alt={p.name} className="h-full w-full object-cover" data-testid="product-main-image" /> : <BrandMark name={p.brand?.name || p.name} className="h-full w-full" />}
+          <div className="rounded-3xl overflow-hidden border aspect-[16/10] bg-slate-100">
+            {p.images?.length ? <img src={imgUrl(p.images[img])} alt={p.name} className="h-full w-full object-contain" data-testid="product-main-image" /> : <BrandMark name={p.brand?.name || p.name} className="h-full w-full" />}
           </div>
           {p.images?.length > 1 && <div className="mt-3 flex gap-2">{p.images.map((u, i) => <button key={u} onClick={() => setImg(i)} data-testid={`product-thumb-${i}`} className={`h-16 w-20 rounded-lg overflow-hidden border-2 ${i === img ? "border-blue-600" : "border-transparent"}`}><img src={imgUrl(u)} alt="" className="h-full w-full object-cover" /></button>)}</div>}
           <div className="mt-10">
