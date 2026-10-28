@@ -1,4 +1,5 @@
 import hashlib
+import re
 import secrets
 from datetime import timedelta
 
@@ -202,7 +203,9 @@ async def cb_admin(rest, chat_id, frm):
 
 async def cb_buy(rest, chat_id, frm):
     pid, _, vid = rest.partition(":")
-    p = await db.products.find_one({"id": {"$regex": f"^{pid}"}, "status": "published", "deleted_at": None}, {"_id": 0})
+    if len(pid) != 8 or len(vid) != 8:
+        return await send(chat_id, "Product not available.")
+    p = await db.products.find_one({"id": {"$regex": f"^{re.escape(pid)}"}, "status": "published", "deleted_at": None}, {"_id": 0})
     v = next((x for x in (p or {}).get("variants", []) if x["id"].startswith(vid)), None)
     if not p or not v:
         return await send(chat_id, "Product not available.")

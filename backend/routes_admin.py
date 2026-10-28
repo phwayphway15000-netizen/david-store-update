@@ -351,6 +351,15 @@ async def bulk(body: BulkIn, user=Depends(require("products"))):
 
 
 def parse_sheet(filename, raw):
+    try:
+        return _parse_sheet(filename, raw)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(400, "Could not read file. Use a UTF-8 .csv or a valid .xlsx") from e
+
+
+def _parse_sheet(filename, raw):
     name = (filename or "").lower()
     if name.endswith(".csv"):
         return list(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))))
@@ -520,6 +529,8 @@ async def put_settings(body: dict, user=Depends(require("settings"))):
     allowed = {"brand_name", "logo_url", "og_image", "tagline_en", "tagline_my", "contacts", "messenger_url", "hero",
                "policies", "faq", "services"}
     upd = {k: v for k, v in body.items() if k in allowed}
+    if isinstance(upd.get("faq"), list):
+        upd["faq"] = [{k: str(q.get(k) or "") for k in ("q_en", "q_my", "a_en", "a_my")} for q in upd["faq"] if isinstance(q, dict)]
     await db.settings.update_one({"id": "global"}, {"$set": {**upd, "updated_at": now_iso()}})
     await audit(actor_of(user), "settings.updated", "settings", "global", {"fields": list(upd)})
     return await db.settings.find_one({"id": "global"}, {"_id": 0})

@@ -155,7 +155,8 @@ async def fetch_with_retry(s, run):
             return items, None
         except Exception as e:
             err = str(e)
-            await asyncio.sleep(2 ** attempt)
+            if attempt < 2:
+                await asyncio.sleep(2 ** attempt)
     return None, err
 
 
@@ -398,10 +399,10 @@ async def import_products(sid: str, body: ImportBody, user=Depends(require("prod
         if sp.get("linked_product_id"):
             continue
         p = {"id": new_id(), "slug": slugify(it.name), "name": it.name, "name_my": "", "brand_id": it.brand_id,
-             "category_id": it.category_id, "short_description": it.description[:200], "short_description_my": "",
+             "category_id": it.category_id, "short_description": (it.description or "")[:200], "short_description_my": "",
              "description": it.description or sp.get("description", ""), "description_my": "", "product_type": "subscription",
              "activation_method": "", "eligibility": "", "warranty": "", "delivery_time": "",
-             "images": [sp["image"]] if sp.get("image", "").startswith("https://") else [],
+             "images": [sp["image"]] if (sp.get("image") or "").startswith("https://") else [],
              "featured": False, "hot": False, "status": "published" if it.publish else "draft", "source_type": "SUPPLIER_API",
              "variants": [{"id": new_id(), "name": it.plan_name, "duration": it.duration, "price_mmk": it.price_mmk,
                            "promo_price_mmk": None, "promo_start": None, "promo_end": None, "stock_status": "in_stock",

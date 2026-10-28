@@ -1,0 +1,43 @@
+{
+  "summary": "Regression run after code-quality refactors. Backend: existing suite test_store_regression.py 36/36 PASS (conftest now reads creds/supplier key/base from backend/.env - works). New suite test_refactor_regression.py 12/12 PASS covering supplier sync refactor (fetch_with_retry 3 attempts + failed run/health=error, upsert new/updated counts, duplicate_count via colliding map_id -> 1 new + 3 dup, supplier_cost price_history, locked selling price NOT overwritten, supplier_cost/stock refreshed, unlocked+markup recalculates price with selling_price history, re-import skipped, 3 sync runs recorded), OpenAPI read (no URL 400, HTML 400 'Could not read spec as JSON', JSON w/o paths 200), CSV/XLSX import (case-insensitive name grouping into plans, bad price row + missing name reported with row numbers, brand/category auto-created and reused case-insensitively, xlsx float price, .txt 400), order transition/deliver invalid -> 400 with detail, empty delivery 422, unknown order 404, Telegram CALLBACKS dispatch (x: cancels intent and later c: creates nothing; b: creates bot intent; c: creates AWAITING_PAYMENT order; pm: rejected for other chat, sets payment_method_id + await_evidence session for owner chat; text evidence -> PAYMENT_SUBMITTED; unknown kind / bad b: / bad pm: handled; non-owner a: audited; duplicate update_id ignored). Frontend (Playwright 1920): Home hero logo + 4 FAQ accordion; catalog search debounced (1 request for 7 keystrokes), URL sync, empty state, min price/in-stock/promo filters and clear; Support 4 contacts + 4 FAQ; product page Messenger dialog creates ref, copy button puts summary w/ ref in clipboard, track link -> /track auto-lookup shows status; bad token shows error; Settings FAQ add -> save -> reload persists -> remove -> save persists; sidebar nav filtered for owner/customer_service/product_manager and direct /admin/users shows no-permission; Order detail full flow (Customer confirmed -> add evidence reference -> approve via confirm dialog -> delivery form -> toast 'awaiting_manual_handoff', timeline 5 events). No page errors. Found only minor issues (3 unhandled 500s on malformed input, FAQ _k key leaking into DB).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/admin/suppliers/{sid}/import", "issue": "Sending \"description\": null returns 500 (TypeError: it.description[:200] on None in suppliers.import_products). Also sp.get('image','').startswith would 500 if image is stored as null. Use (it.description or '') and (sp.get('image') or '')."},
+      {"endpoint": "POST /api/admin/products/import", "issue": "Corrupt .xlsx (not a zip) -> 500 (openpyxl BadZipFile) and non-UTF8 .csv -> 500 (UnicodeDecodeError) in parse_sheet. Wrap parsing in try/except and raise HTTPException(400, 'Could not read file')."},
+      {"endpoint": "PUT /api/admin/settings (faq)", "issue": "Settings.jsx adds a client-only `_k` React key to every FAQ item and sends it on save; backend stores it as-is (faq items now contain q_en,q_my,a_en,a_my,_k). Strip `_k` in the frontend before PUT or validate FAQ items with a Pydantic model server-side. (I restored the original FAQ in DB after the test.)"},
+      {"endpoint": "telegram_bot.cb_buy (b: callback)", "issue": "Unescaped callback data is used in a Mongo $regex (`^{pid}`); 'b::' or regex metachars match any published product. Use re.escape(pid) and require len(pid)==8."},
+      {"endpoint": "suppliers.fetch_with_retry", "issue": "Sleeps 2**attempt even after the final failed attempt (adds a useless 4s to every failed sync request)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/track result (MM locale)", "issues": ["Status chip shows English label ('Awaiting customer confirmation') while rest of page is Myanmar - consider localized status label."]},
+      {"screen": "Admin Settings FAQ editor", "issues": ["FAQ question/answer inputs and the 'Remove' button have no data-testid (tests rely on placeholders/role)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_store_regression.py", "/app/backend/tests/test_refactor_regression.py", "/app/test_reports/pytest/pytest_results_iter2.xml", "/app/test_reports/pytest/pytest_refactor_iter2.xml"],
+  "action_items": [
+    "Guard None in suppliers import_products (description/image) to avoid 500",
+    "Return 400 instead of 500 for unreadable CSV/XLSX in parse_sheet",
+    "Strip `_k` from FAQ items before saving settings (or validate server-side)",
+    "re.escape the product/variant prefix in telegram cb_buy",
+    "Update /app/memory/test_credentials.md: sandbox supplier Base URL still lists old host https://629dddf4-...; should be PUBLIC_BASE_URL (https://dav-ai-store--1vf4dwgp.preview.emergentagent.com)",
+    "Optional: add data-testid to Settings FAQ inputs/Remove button"
+  ],
+  "critical_code_review_comments": [
+    "routes_admin.py is 780 lines (>700) - consider splitting auth/users, products/import, orders into modules",
+    "telegram handle_update only catches OrderError; any other exception in a handler bubbles up to the webhook (Telegram will retry the update, but the update_id is already recorded so the retry is dropped as duplicate -> update silently lost). Consider catching Exception, logging, and returning ok.",
+    "find_or_create slug: slugify(name).rsplit('-',1)[0] - verify slug uniqueness for brands/categories created from imports"
+  ],
+  "updated_files": ["/app/backend/tests/test_refactor_regression.py"],
+  "success_rate": {"backend": "100% (48/48 tests); 3 minor 500s on malformed input found via ad-hoc probes", "frontend": "100% of requested flows"},
+  "test_credentials": "Owner from /app/memory/test_credentials.md works. Sandbox supplier base URL in that file is outdated (use PUBLIC_BASE_URL).",
+  "seed_data_creation": "None persistent. All TEST_ products/suppliers/brands/categories deleted; TEST orders (incl. DAV-2026-000008 created via UI) and their events/evidence/artifacts deleted from Mongo; test_ users deactivated; fake-chat telegram sessions removed; payment methods verified disabled with empty accounts; settings FAQ verified identical to original.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && pytest tests/ -v (pytest.ini forces -n 2 --dist loadscope; use -n 0 for serial). test_refactor_regression.py temporarily enables KBZPay via fixture and resets it (enabled=false, empty account). Duplicate counting is tested by mapping map_id to details.summary. Order detail evidence form only appears after 'Customer confirmed' (AWAITING_PAYMENT). Public settings endpoint is /api/settings/public.",
+  "rca of the issue": "FAQ _k leak: Settings.jsx useEffect maps faq items to {...q, _k} for stable React keys and the save payload sends f.faq unchanged; backend PUT /admin/settings copies the faq list verbatim. Import 500s: parse_sheet decodes/loads without try/except; suppliers import slices Optional description without None guard."
+}
