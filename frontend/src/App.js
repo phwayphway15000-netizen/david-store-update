@@ -27,6 +27,15 @@ import Settings from "@/pages/admin/Settings";
 import Audit from "@/pages/admin/Audit";
 import SupplierIntegrations from "@/pages/admin/SupplierIntegrations";
 import SupplierCatalogue from "@/pages/admin/SupplierCatalogue";
+import Resellers from "@/pages/admin/Resellers";
+import AdminResellerOrders from "@/pages/admin/ResellerOrders";
+import ResellerOrderDetail from "@/pages/admin/ResellerOrderDetail";
+import { ResellerProvider } from "@/lib/reseller";
+import ResellerLayout from "@/pages/reseller/ResellerLayout";
+import ResellerLogin from "@/pages/reseller/ResellerLogin";
+import ResellerShop from "@/pages/reseller/ResellerShop";
+import ResellerOrders from "@/pages/reseller/ResellerOrders";
+import ResellerOrderView from "@/pages/reseller/ResellerOrderView";
 
 function App() {
   return (
@@ -60,6 +69,15 @@ function App() {
               <Route path="audit" element={<Audit />} />
               <Route path="supplier-integrations" element={<SupplierIntegrations />} />
               <Route path="supplier-catalogue" element={<SupplierCatalogue />} />
+              <Route path="resellers" element={<Resellers />} />
+              <Route path="reseller-orders" element={<AdminResellerOrders />} />
+              <Route path="reseller-orders/:id" element={<ResellerOrderDetail />} />
+            </Route>
+            <Route path="/reseller/login" element={<ResellerProvider><ResellerLogin /></ResellerProvider>} />
+            <Route path="/reseller" element={<ResellerProvider><ResellerLayout /></ResellerProvider>}>
+              <Route index element={<ResellerShop />} />
+              <Route path="orders" element={<ResellerOrders />} />
+              <Route path="orders/:id" element={<ResellerOrderView />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

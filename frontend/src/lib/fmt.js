@@ -16,6 +16,9 @@ export const STATUS_STYLE = {
   CANCELLED: "bg-slate-100 text-slate-500 border-slate-200",
   REFUND_PENDING: "bg-orange-50 text-orange-700 border-orange-300",
   REFUNDED: "bg-stone-100 text-stone-600 border-stone-300",
+  PENDING_CONFIRMATION: "bg-violet-50 text-violet-700 border-violet-300",
+  PAID: "bg-emerald-50 text-emerald-700 border-emerald-300",
+  REJECTED: "bg-rose-50 text-rose-700 border-rose-300",
 };
 
 export const statusLabel = (s) => (s || "").replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());

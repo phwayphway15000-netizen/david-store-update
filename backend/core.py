@@ -84,7 +84,7 @@ ROLES = ["owner", "admin", "product_manager", "customer_service"]
 PERMS = {
     "owner": {"*"},
     "admin": {"dashboard", "products", "catalog", "suppliers", "promotions", "orders", "orders.approve",
-              "orders.deliver", "settings", "audit", "users.view"},
+              "orders.deliver", "settings", "audit", "users.view", "resellers"},
     "product_manager": {"dashboard", "products", "catalog", "suppliers", "promotions"},
     "customer_service": {"dashboard", "orders"},
 }

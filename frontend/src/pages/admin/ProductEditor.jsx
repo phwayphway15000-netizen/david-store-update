@@ -21,6 +21,7 @@ function VariantRow({ v, i, set, remove }) {
       <Field label="Duration"><input data-testid={`variant-duration-${i}`} className={inp} value={v.duration || ""} onChange={(e) => u("duration", e.target.value)} /></Field>
       <Field label="Selling price (MMK)"><input data-testid={`variant-price-${i}`} type="number" min="0" className={inp} value={v.price_mmk} onChange={(e) => u("price_mmk", Number(e.target.value))} /></Field>
       <Field label="Promo price (MMK)"><input data-testid={`variant-promo-${i}`} type="number" min="0" className={inp} value={v.promo_price_mmk ?? ""} onChange={(e) => u("promo_price_mmk", num(e.target.value))} /></Field>
+      <Field label="Reseller price (MMK)" hint="Empty = not sold to resellers"><input data-testid={`variant-reseller-price-${i}`} type="number" min="0" className={inp} value={v.reseller_price_mmk ?? ""} onChange={(e) => u("reseller_price_mmk", num(e.target.value))} /></Field>
       <Field label="Promo start"><input type="datetime-local" className={inp} value={toLocal(v.promo_start)} onChange={(e) => u("promo_start", fromLocal(e.target.value))} /></Field>
       <Field label="Promo end"><input type="datetime-local" className={inp} value={toLocal(v.promo_end)} onChange={(e) => u("promo_end", fromLocal(e.target.value))} /></Field>
       <Field label="Manual stock">

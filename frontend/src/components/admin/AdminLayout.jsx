@@ -1,12 +1,12 @@
 import { NavLink, Navigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useMemo, useState } from "react";
-import { LayoutDashboard, Package, Tags, PlugZap, Inbox, Megaphone, Wallet, Users, Settings, ScrollText, LogOut, Menu, Store, Boxes } from "lucide-react";
+import { LayoutDashboard, Package, Tags, PlugZap, Inbox, Megaphone, Wallet, Users, Settings, ScrollText, LogOut, Menu, Store, Boxes, Handshake, ShoppingBag } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 const NAV = [
-  ["", "Dashboard", LayoutDashboard, "dashboard"], ["orders", "Orders", Inbox, "orders"], ["products", "Products", Package, "products"],
+  ["", "Dashboard", LayoutDashboard, "dashboard"], ["orders", "Orders", Inbox, "orders"], ["reseller-orders", "Reseller orders", ShoppingBag, "orders"], ["products", "Products", Package, "products"],
   ["catalog", "Brands & Categories", Tags, "catalog"], ["supplier-integrations", "Supplier Integrations", PlugZap, "suppliers"], ["supplier-catalogue", "Supplier Catalogue", Boxes, "suppliers"], ["suppliers", "Custom suppliers", PlugZap, "suppliers"], ["promotions", "Promotions", Megaphone, "promotions"],
-  ["payment-methods", "Payment methods", Wallet, "orders"], ["users", "Team", Users, "users.view"], ["settings", "Settings", Settings, "settings"],
+  ["payment-methods", "Payment methods", Wallet, "orders"], ["users", "Team", Users, "users.view"], ["resellers", "Resellers", Handshake, "resellers"], ["settings", "Settings", Settings, "settings"],
   ["audit", "Audit log", ScrollText, "audit"],
 ];
 

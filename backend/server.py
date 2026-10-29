@@ -12,6 +12,7 @@ import routes_public
 import routes_admin
 import suppliers
 import connectors
+import resellers
 import telegram_bot as TB
 
 app = FastAPI(title="AI Tools By David Digital Store API")
@@ -19,6 +20,7 @@ app.include_router(routes_public.router)
 app.include_router(routes_admin.router)
 app.include_router(suppliers.router)
 app.include_router(connectors.router)
+app.include_router(resellers.router)
 
 ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip() and o.strip() != "*"]
 if os.environ.get("FRONTEND_URL"):
@@ -48,6 +50,8 @@ async def startup():
     await seed()
     await connectors.install_presets()
     await db.supplier_products.create_index([("supplier_id", 1), ("name", 1)])
+    await db.resellers.create_index("email")
+    await db.reseller_orders.create_index([("reseller_id", 1), ("created_at", -1)])
     init_storage()
     asyncio.create_task(suppliers.scheduler_loop())
     asyncio.create_task(connectors.scheduler_loop())

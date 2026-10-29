@@ -203,6 +203,7 @@ class VariantIn(BaseModel):
     stock_status: Literal["in_stock", "out_of_stock", "limited"] = "in_stock"
     stock_qty: Optional[int] = Field(default=None, ge=0)
     stock_override: Optional[Literal["in_stock", "out_of_stock"]] = None
+    reseller_price_mmk: Optional[int] = Field(default=None, ge=0, le=100_000_000)
     supplier_id: Optional[str] = None
     supplier_product_id: Optional[str] = None
     price_locked: bool = True

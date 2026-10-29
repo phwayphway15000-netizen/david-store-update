@@ -8,7 +8,7 @@ api.interceptors.response.use(
   (r) => r,
   async (error) => {
     const cfg = error.config || {};
-    if (error.response?.status === 401 && !cfg._retry && !cfg.url?.startsWith("/auth/")) {
+    if (error.response?.status === 401 && !cfg._retry && !cfg.url?.startsWith("/auth/") && !cfg.url?.startsWith("/reseller/")) {
       cfg._retry = true;
       refreshing = refreshing || api.post("/auth/refresh").finally(() => { refreshing = null; });
       try {
