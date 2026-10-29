@@ -36,7 +36,14 @@ Owner (David), Admin, Product Manager, Customer Service staff; Myanmar customers
 - 2026-10-28: user chose to enter real keys themselves in Admin (AIVaultHub, Acczone, Canboso, StoreGPTPlus + all); imported products stay hidden until reviewed. Shared stock rule (suppliers.stock_of) for import+sync, claim released on any import error, metric renamed 'Catalogue items', editor shows supplier cost in its currency. No real keys connected yet.
 - 2026-10-28: product photos now shown in full (object-contain on product cards, product detail main image, admin editor thumbnails).
 
+## Reseller ordering (2026-10-29)
+- User request: "add reseller ordering system that directly report to admin to confirm the order and manual payment check. Reseller accounts are also created by admin." Choices: separate reseller price per plan; payment screenshot upload; admin panel only notifications; cart with quantities; delivery inside reseller portal.
+- backend/resellers.py: separate `resellers` collection + `reseller_token` cookie (isolated from admin auth), admin-only account creation, brute-force lockout. `reseller_orders` flow PENDING_CONFIRMATION → AWAITING_PAYMENT → PAYMENT_SUBMITTED → PAID / PAYMENT_REJECTED → DELIVERED (+ REJECTED, CANCELLED); atomic status moves, server-side pricing from `variants[].reseller_price_mmk`, private screenshot storage, encrypted per-item delivery content.
+- Frontend: /reseller/login, /reseller (catalog + cart), /reseller/orders, /reseller/orders/:id; admin /admin/resellers, /admin/reseller-orders(/:id); product editor 'Reseller price (MMK)'.
+- Tested iteration_5: 39/40 backend + full UI flow; remaining notes leak fixed after.
+
 ## Backlog
+- P2 reseller: delete button in UI, refresh cart prices from catalog, 404 page for missing orders.
 - P1: Official Meta Messenger Platform connector (needs Page token + App Review); Turnstile on suspicious checkout; DNS-pinning for supplier requests; Burmese status labels on Track page.
 - P2: Per-order customer notifications for Messenger orders; reports export; multi-admin Telegram operators.
 

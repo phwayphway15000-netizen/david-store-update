@@ -25,8 +25,16 @@ NOTE_REQUIRED = {"reject", "reject_payment", "cancel"}
 PRIVATE = {"_id": 0, "password_hash": 0}
 
 
+PORTAL_HIDDEN = ("password_hash", "_id", "notes", "created_by", "deleted_at")
+PROOF_TYPES = {"image/jpeg": (b"\xff\xd8\xff",), "image/png": (b"\x89PNG",), "image/webp": (b"RIFF",)}
+
+
 def reseller_out(r):
     return {k: v for k, v in r.items() if k not in ("password_hash", "_id")}
+
+
+def portal_out(r):
+    return {k: v for k, v in r.items() if k not in PORTAL_HIDDEN}
 
 
 async def current_reseller(request: Request):
@@ -53,11 +61,11 @@ async def next_ref():
     return f"RS-{now().year}-{c['seq']:06d}"
 
 
-async def move(order_id, frm, to, actor, action, note=None, extra=None, query=None):
+async def move(order_id, frm, to, actor, action, note=None, extra=None, query=None, push=None):
     res = await db.reseller_orders.find_one_and_update(
         {"id": order_id, "status": {"$in": list(frm)}, **(query or {})},
         {"$set": {"status": to, "updated_at": now_iso(), **(extra or {})},
-         "$push": {"events": {"id": new_id(), "to": to, "action": action, "note": note, "actor": actor, "at": now_iso()}}},
+         "$push": {"events": {"id": new_id(), "to": to, "action": action, "note": note, "actor": actor, "at": now_iso()}, **(push or {})}},
         projection={"_id": 0}, return_document=ReturnDocument.AFTER)
     if not res:
         raise HTTPException(409, "This order changed or the action is not allowed in its current status. Refresh and try again.")
@@ -94,7 +102,7 @@ async def login(body: LoginIn, request: Request, response: Response):
     response.set_cookie(COOKIE, create_token(r["id"], "reseller", 60 * 12), httponly=True, secure=True, samesite="none", max_age=43200, path="/")
     await db.resellers.update_one({"id": r["id"]}, {"$set": {"last_login_at": now_iso()}})
     await audit(reseller_actor(r), "reseller.login", "reseller", r["id"])
-    return reseller_out(r)
+    return portal_out(r)
 
 
 @router.post("/reseller/auth/logout")
@@ -105,7 +113,7 @@ async def logout(response: Response):
 
 @router.get("/reseller/auth/me")
 async def me(r=Depends(current_reseller)):
-    return r
+    return portal_out(r)
 
 
 class PasswordIn(BaseModel):
@@ -128,7 +136,7 @@ async def change_password(body: PasswordIn, r=Depends(current_reseller)):
 async def catalog(r=Depends(current_reseller)):
     bm, _ = await lookup_maps()
     out = []
-    async for p in db.products.find({"status": "published", "deleted_at": None, "variants.reseller_price_mmk": {"$ne": None}}, {"_id": 0}).sort("name", 1):
+    async for p in db.products.find({"status": "published", "deleted_at": None, "variants": {"$elemMatch": {"reseller_price_mmk": {"$ne": None}}}}, {"_id": 0}).sort("name", 1):
         vs = [{"id": v["id"], "name": v.get("name"), "duration": v.get("duration"), "reseller_price_mmk": v["reseller_price_mmk"],
                "retail_price_mmk": v.get("price_mmk"), "available": variant_available(v)}
               for v in p.get("variants", []) if v.get("active", True) and v.get("reseller_price_mmk") is not None]
@@ -216,18 +224,17 @@ async def submit_payment(oid: str, reference: str = Form(""), payment_method_id:
     if o["status"] not in {"AWAITING_PAYMENT", "PAYMENT_REJECTED"}:
         raise HTTPException(400, "Payment can only be sent after the admin confirms your order")
     ct = file.content_type or ""
-    if ct not in IMAGE_TYPES:
-        raise HTTPException(400, "Please upload a JPG, PNG or WEBP screenshot")
     data = await file.read()
+    if ct not in PROOF_TYPES or not data.startswith(PROOF_TYPES[ct]):
+        raise HTTPException(400, "Please upload a JPG, PNG or WEBP screenshot")
     if len(data) > 8 * 1024 * 1024:
         raise HTTPException(400, "Image is too large (max 8 MB)")
     eid = new_id()
     res = await put_object(f"{APP_NAME}/private/reseller-evidence/{o['id']}/{eid}.{IMAGE_TYPES[ct]}", data, ct)
     ev = {"id": eid, "reference": reference[:200] or None, "payment_method_id": payment_method_id[:64] or None,
           "storage_path": res["path"], "content_type": ct, "review_status": "pending", "created_at": now_iso()}
-    await db.reseller_orders.update_one({"id": o["id"]}, {"$push": {"evidence": ev}})
     return order_out(await move(o["id"], {"AWAITING_PAYMENT", "PAYMENT_REJECTED"}, "PAYMENT_SUBMITTED", reseller_actor(r),
-                                "payment_submitted", ev["reference"], query={"reseller_id": r["id"]}))
+                                "payment_submitted", ev["reference"], query={"reseller_id": r["id"]}, push={"evidence": ev}))
 
 
 async def evidence_bytes(o, eid):
@@ -350,7 +357,7 @@ async def admin_action(oid: str, body: ActionIn, user=Depends(require("orders"))
 
 class DeliverItem(BaseModel):
     item_id: str = Field(max_length=64)
-    content: str = Field(min_length=1, max_length=4000)
+    content: str = Field(default="", max_length=4000)
 
 
 class DeliverIn(BaseModel):

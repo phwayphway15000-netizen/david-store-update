@@ -1,0 +1,49 @@
+{
+  "summary": "Tested the reseller ordering system end to end, on the backend (pytest, 40 cases) and in the UI (Playwright on desktop and at 390px mobile). Found and fixed 1 HIGH bug: GET /api/reseller/catalog hid every product that had at least one plan without a reseller price. After the fix, 39/40 backend tests pass. The one remaining failure is that the admin's 'Private notes' about a reseller are shown to that reseller. Everything else works: account create/edit/disable/delete, duplicate-email and admin-email rejection, no public signup, login (401, 429 after 5 failures, HttpOnly Secure cookie, a disabled reseller's session gets 401), tokens kept apart (a reseller token on /api/admin/* gets 401, the admin session on /api/reseller/* gets 401), catalog visibility (published products with a reseller price only; draft and no-price plans hidden; out-of-stock shown but disabled), and public /api/products and product detail never show reseller_price. Orders: the server works out prices itself (client prices and totals are ignored), and duplicate lines, out-of-stock, no-price, draft, qty 0/101 and an empty cart are all rejected. Full order flow tested: confirm, a second confirm gets 409, PDF and files over 8MB rejected, PNG upload, admin and reseller can view the screenshot, the other reseller gets 404, reject payment needs a reason and the reseller can upload again, deliver before payment is blocked, approve, partial delivery is blocked, delivery works, the reseller sees the delivery per item, and the order list does not show delivery content. Reject order needs a reason and the reason is shown to the reseller. The reseller can cancel in PENDING_CONFIRMATION and AWAITING_PAYMENT only. A customer_service user can view orders but gets 403 on confirm and on reseller management. With can_approve_payments it can confirm but still cannot manage resellers. In the UI: admin creates and edits a reseller (duplicate shows a toast, email is locked when editing), the product editor's reseller price saves and then shows in the portal, and the cart works (add, +/-, typed qty, remove, correct totals, survives reload, emptied after the order). The whole confirm → upload (.txt rejected) → reject payment with reason → re-upload → approve → deliver flow passed in the UI. Mobile at 390px has no horizontal scroll. Language toggle, logout, and the /reseller redirect to login all work. Regression: storefront, products page, admin orders and real order DAV-2026-000001 (still AWAITING_PAYMENT) are fine.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "GET /api/reseller/catalog", "issue": "FIXED BY TESTER: the query used {'variants.reseller_price_mmk': {'$ne': None}}. In MongoDB this excludes a product if ANY of its variants has a null reseller price, so a product with mixed plans disappeared from the portal. Changed it to {'variants': {'$elemMatch': {'reseller_price_mmk': {'$ne': None}}}}. Retested: passes.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "GET /api/reseller/auth/me, POST /api/reseller/auth/login", "issue": "Return the whole reseller document, including the admin-only 'notes' (labelled 'Private notes' in the admin UI), plus created_by and deleted_at. Use a whitelist (id, email, name, business_name, phone, active, last_login_at) in reseller_out and in current_reseller's response."},
+      {"endpoint": "POST /api/admin/reseller-orders/{id}/deliver", "issue": "If one item's content is empty, the response is a raw pydantic 422 ('content String should have at least 1 character') instead of the friendly 400 'Enter delivery details for every item'. Make DeliverItem.content optional or allow empty, so the existing check handles it, or have the frontend leave out empty items."},
+      {"endpoint": "POST /api/reseller/orders/{id}/payment", "issue": "Image type is trusted from the client's Content-Type, with no magic-byte check. GIF is accepted, although the UI and the error message say JPG/PNG/WEBP. Evidence is uploaded and pushed before the status move, so two uploads at the same time (or a status change in between) leave an orphaned 'pending' evidence entry when the move returns 409."},
+      {"endpoint": "POST /api/reseller/orders", "issue": "Limited stock is checked but never reserved or decremented, so many reseller orders can go over stock_qty."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Admin Resellers page", "issue": "No delete or archive button in the UI, although DELETE /api/admin/resellers/{id} exists. The edit 'Cancel' button has no data-testid.", "selector": "[data-testid=reseller-form]", "priority": "LOW"},
+      {"component": "ResellerOrderView / admin ResellerOrderDetail", "issue": "No error state: an invalid or someone else's order id (404) shows 'Loading…' forever.", "selector": "[data-testid=reseller-order-ref]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Reseller cart", "issue": "The cart in localStorage keeps the unit price from when the plan was added. If the admin then changes the reseller price, the cart total differs from the server's order total (the server is correct). Refresh cart prices from the catalog on load. The cart also stays in localStorage after logout.", "affected_selectors": ["[data-testid=reseller-cart-total]"]}
+    ],
+    "design_issues": [
+      {"screen": "Reseller shop (mobile 390px)", "issues": ["The cart sits below the whole catalog. Only the header badge shows the item count, so on mobile it is easy to miss the place-order area. Consider a sticky 'View cart' bar."]},
+      {"screen": "Admin reseller orders tabs", "issues": ["Tabs with a count of 0 show no number, and 'All' has no count. Minor."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_resellers_iter5.py", "/app/backend/tests/ui_seed_iter5.py", "/app/test_reports/pytest/pytest_iter5.xml"],
+  "action_items": [
+    "Strip private admin notes (and created_by/deleted_at) from the reseller /auth/me and /auth/login responses",
+    "Return a friendly error when delivery content is empty (currently a raw 422 pydantic message)",
+    "Optional: check image magic bytes and drop GIF, or allow GIF in the UI accept list; avoid orphaned evidence entries on 409",
+    "Optional: refresh cart prices from the catalog; add reseller delete in the UI; add an error state for 404 order pages",
+    "The reseller counter 'reseller-2026' is at seq 11 because test orders used refs. All test orders were deleted, so you can reset counters._id='reseller-2026' to 0 before go-live, so the first real order is RS-2026-000001"
+  ],
+  "critical_code_review_comments": [
+    "resellers.py catalog: the '$ne None' query on an array field is wrong (fixed by tester, now $elemMatch)",
+    "reseller_out() should whitelist fields, not blacklist them; current_reseller returns all fields except password_hash",
+    "submit_payment: put_object and the evidence push happen before the status move; the move should be atomic with the push",
+    "admin_action approve/reject_payment updates evidence review_status in a second write, after the move (a small race)"
+  ],
+  "updated_files": ["/app/backend/resellers.py (catalog query fix)", "/app/backend/tests/test_resellers_iter5.py", "/app/backend/tests/ui_seed_iter5.py"],
+  "success_rate": {"backend": "97.5% (39/40) after the catalog fix", "frontend": "100% of tested flows"},
+  "test_credentials": "Owner chutpakoda05@gmail.com / -FkF3oEvLf-j; reseller test_reseller1@example.com / Reseller#2026 (kept on purpose, no orders left)",
+  "seed_data_creation": "All TEST_ products, TEST_ resellers, test_cs staff users and reseller_orders created during testing were deleted. test_reseller1 is kept. Uploaded test screenshots remain in object storage under private/reseller-evidence (there is no delete API).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && pytest tests/test_resellers_iter5.py -n 0 -p no:randomly. It creates and cleans up its own TEST_ product, resellers, staff users and orders. The test order matters (module-scoped env). UI seed: python tests/ui_seed_iter5.py seed|cleanup (cleanup also deletes test_reseller1's orders). Each run takes about 10 RS refs. Do not touch DAV-2026-000001 and do not run cleanup_check.py, test_store_regression.py or test_refactor_regression.py.",
+  "rca of the issue": "Catalog empty for mixed products: MongoDB applies {'arr.field': {$ne: null}} as 'no element has field == null', so one variant without reseller_price_mmk excluded the whole product. Reproduce: create a published product with variants [rp=1000, rp=None]; GET /api/reseller/catalog returns []. Fix: $elemMatch."
+}
